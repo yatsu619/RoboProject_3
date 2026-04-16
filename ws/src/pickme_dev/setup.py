@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            "motioncontroller_node = pickme_dev.MotionController.MotionController:main"
         ],
     },
 )

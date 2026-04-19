@@ -116,15 +116,20 @@ class MotionControllerNode(Node):
                 
                 # Constant velocity phase
                 self.axis_speed[0] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.controller.accel = 0
                 self.axis_time[0] = self.distance_left[0] / self.axis_speed[0]
                 time.sleep(self.axis_time[0])
                 
-                # Decelleration phase
-                self.Accelerate("X", float(self.controller.accel))
+                # Deceleration phase
+                self.Accelerate("X", float(-self.controller.accel))
                 time.sleep(TIMEBASE_ACCELERATION)
                 self.Accelerate("X", 0.0)
                 self.distance_left[0] = 0
+                self.controller.accel = 0
+
+                # These are stopping indications for the simulator
+                # Shall not be used in production!
+                self.cmd.activate_gripper = True
+                self.publisher_command.publish(self.cmd)
             
 
             if ((self.controller.accelerated_axis[1]) & (axis == "Y")):
@@ -135,15 +140,15 @@ class MotionControllerNode(Node):
                 
                 # Constant velocity phase
                 self.axis_speed[1] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.controller.accel = 0
                 self.axis_time[1] = self.distance_left[1] / self.axis_speed[1]
                 time.sleep(self.axis_time[1])
                 
-                # Decelleration phase
-                self.Accelerate("Y", float(self.controller.accel))
+                # Deceleration phase
+                self.Accelerate("Y", float(-self.controller.accel))
                 time.sleep(TIMEBASE_ACCELERATION)
                 self.Accelerate("Y", 0.0)
                 self.distance_left[1] = 0
+                self.controller.accel = 0
             
 
             if ((self.controller.accelerated_axis[2]) & (axis == "Z")):
@@ -154,15 +159,15 @@ class MotionControllerNode(Node):
                 
                 # Constant velocity phase
                 self.axis_speed[2] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.controller.accel = 0
                 self.axis_time[2] = self.distance_left[2] / self.axis_speed[2]
                 time.sleep(self.axis_time[2])
                 
-                # Decelleration phase
-                self.Accelerate("Z", float(self.controller.accel))
+                # Deceleration phase
+                self.Accelerate("Z", float(-self.controller.accel))
                 time.sleep(TIMEBASE_ACCELERATION)
                 self.Accelerate("Z", 0.0)
                 self.distance_left[2] = 0
+                self.controller.accel = 0
             
 
             if ((self.distance_left[0] or self.distance_left[1] or self.distance_left[2]) == 0):

@@ -1,10 +1,12 @@
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 import threading
 import time
 from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug
 from .MotionControllerLogic import MotionControllerLogic
+from rclpy.duration import Duration
 
 from std_msgs.msg import Bool
 
@@ -14,6 +16,7 @@ TIMEBASE_ACCELERATION = 1
 class MotionControllerNode(Node):
     def __init__(self):
         super().__init__('motioncontroller_node')
+        self.callback_group = ReentrantCallbackGroup()
 
         self.publisher_command = self.create_publisher(
             RobotCmd,
@@ -43,7 +46,7 @@ class MotionControllerNode(Node):
             10
         )
 
-        self.timer = self.create_timer(TIMEBASE, self.PrimThread)
+        self.timer = self.create_timer(TIMEBASE, self.PrimThread, callback_group=ReentrantCallbackGroup())
         
         self.cmd = RobotCmd()
         
@@ -66,7 +69,6 @@ class MotionControllerNode(Node):
         self.distance_left = [0, 0, 0]
 
         self.controller = MotionControllerLogic()
-
     
 
     def external_debug_callback(self, msg: ExtDebug):
@@ -179,7 +181,6 @@ class MotionControllerNode(Node):
             self.distance_left = [0, 0, 0]
             print("Motioncontroller inaktiv. Erwartet koordinaten über '/external_debug")
             print('verwende: ros2 topic pub --once /external_debug ro45_portalrobot_interfaces/msg/ExtDebug "{dist_x: 0.5, dist_y: 0.5, dist_z: 0.5}" um die achsen zu verfahren.\n')
-
     
 
     def Accelerate(self, axis: str, acceleration: float):
@@ -193,7 +194,6 @@ class MotionControllerNode(Node):
             case "Z":
                 self.cmd.accel_z = acceleration
                 self.publisher_command.publish(self.cmd)
-
 
 
 def main():

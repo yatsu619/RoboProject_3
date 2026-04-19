@@ -1,4 +1,3 @@
-
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -10,7 +9,7 @@ from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug
 from .MotionControllerLogic import MotionControllerLogic
 import matplotlib.pyplot as plt
 
-TIMEBASE = 0.02 # 50Hz
+TIMEBASE = 0.01 # 50Hz
 
 
 class MotionControllerSimNode(Node):
@@ -47,6 +46,7 @@ class MotionControllerSimNode(Node):
         self.points_y = []
 
         self.loops = 0
+        self.oversampling = 0
 
     def external_debug_callback(self, msg: ExtDebug):
         dista_x = msg.dist_x
@@ -61,7 +61,7 @@ class MotionControllerSimNode(Node):
 
     def command_callback(self, msg: RobotCmd):
         with self.command_lock:
-            self.latest_accel = abs(msg.accel_x)
+            self.latest_accel = msg.accel_x
 
             if (msg.activate_gripper == True):
                 self.done = True
@@ -74,9 +74,11 @@ class MotionControllerSimNode(Node):
         self.loops += 1
         
         if (self.done == True):
-            self.timer.cancel()
-            self.sim_done_time = self.points_x[-1]
-            self.sim_done = True
+            self.oversampling += 1
+            if (self.oversampling > 50):
+                self.timer.cancel()
+                self.sim_done_time = self.points_x[-1]
+                self.sim_done = True
 
     def plotfnc(self):
         # Recalculate sampling to timer timebase
@@ -84,43 +86,54 @@ class MotionControllerSimNode(Node):
             self.points_x[i] = value * TIMEBASE
         self.start_time = self.start_time * TIMEBASE
         self.sim_done_time = self.sim_done_time * TIMEBASE
+        
+        # Conversion to numpy arrays
+        time = np.array(self.points_x)
+        accel = np.array(self.points_y)
+
+        # Integrate Acceleration to get velocity and position
+        velocity = np.cumsum(accel) * TIMEBASE
+        position = np.cumsum(velocity) * TIMEBASE
 
         # Acceleration plot
         plt.subplot(3, 1, 1)
         plt.title("Acceleration plot")
-        plt.plot(np.array(self.points_x), np.array(self.points_y), '-')
+        plt.plot(time, accel, '-')
         plt.ylabel("Acceleration [m/s²]")
-        plt.xlabel("Time [s]")
-        plt.axvline(self.start_time, color = 'b', label = 'Movement Begin')
-        plt.axvline(self.sim_done_time, color = 'r', label = 'Movement End')
+        plt.axvline(self.start_time, color = 'blue', label = 'Simulation Begin')
+        plt.axvline(self.sim_done_time, color = 'blue', label = 'Simulation End')
+        plt.axhline(0.1, color = 'red', label = 'Max. Acceleration', linestyle='--')
+        plt.axhline(-0.1, color = 'red', linestyle='--')
+        if (any(accel) > 0.1):
+            plt.fill_between(time, accel, 0.1, where=(accel > 0.1), facecolor='none', hatch='//', edgecolor='red', label='Critical Acceleration')
+            plt.fill_between(time, accel, -0.1, where=(accel < -0.1), facecolor='none', hatch='//', edgecolor='red')
         plt.legend()
         plt.grid()
 
-        """
         # Speed plot
         plt.subplot(3, 1, 2)
         plt.title("Speed plot")
-        #plt.plot(xpoints, ypoints, 'g-o')
+        plt.plot(time, velocity, '-')
         plt.ylabel("Speed [m/s]")
-        #plt.axvline(movement_begin, color = 'b', label = 'Movement Begin')
-        #plt.axvline(movement_end, color = 'r', label = 'Movement End')
+        plt.axvline(self.start_time, color = 'blue', label = 'Simulation Begin')
+        plt.axvline(self.sim_done_time, color = 'blue', label = 'Simulation End')
         plt.legend()
         plt.grid()
 
         # Positioning plot
         plt.subplot(3, 1, 3)
         plt.title("Position plot")
-        #plt.plot(xpoints, ypoints, 'b-o')
+        plt.plot(time, position, '-')
         plt.xlabel("Time [s]")
         plt.ylabel("Distance [m]")
-        #plt.axvline(movement_begin, color = 'b', label = 'Movement Begin')
-        #plt.axvline(movement_end, color = 'r', label = 'Movement End')
+        plt.axvline(self.start_time, color = 'blue', label = 'Simulation Begin')
+        plt.axvline(self.sim_done_time, color = 'blue', label = 'Simulation End')
+        plt.axhline(self.coordinate, color = 'g', label = "Target")
         plt.legend()
         plt.grid()
-        """
 
-        print(self.points_x)
-        print(self.points_y)
+        print(time)
+        print(accel)
         plt.tight_layout()
         plt.show()
 

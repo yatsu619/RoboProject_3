@@ -30,7 +30,15 @@ class MotionControllerSimNode(Node):
             10
         )
 
+        self.publisher_position = self.create_publisher(
+            RobotPos,
+            '/robot_position',
+            10
+        )
+
         self.timer = self.create_timer(TIMEBASE, self.PrimThread)
+        
+        self.pos = RobotPos()
         
         self.command_lock = threading.Lock()
 
@@ -44,6 +52,9 @@ class MotionControllerSimNode(Node):
 
         self.points_x = []
         self.points_y = []
+
+        self.point_position = 0
+        self.velocity = 0
 
         self.loops = 0
         self.oversampling = 0
@@ -68,9 +79,18 @@ class MotionControllerSimNode(Node):
 
 
     def PrimThread(self):
+        # Append the latest commanded Acceleration
         self.points_y.append(self.latest_accel)
-        self.points_x.append((self.loops + 1))
+
+        # Integrate acceleration to velocity and velocity to position
+        self.velocity += self.latest_accel * TIMEBASE
+        self.point_position += self.velocity * TIMEBASE
+        self.pos.pos_x = self.point_position
+        self.publisher_position.publish(self.pos)
+        print(self.point_position)
         
+        # Append the timebase (x-axis) with + 1. Offset by one to not start at 0.
+        self.points_x.append((self.loops + 1))
         self.loops += 1
         
         if (self.done == True):

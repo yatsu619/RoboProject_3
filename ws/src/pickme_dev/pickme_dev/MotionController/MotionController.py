@@ -10,7 +10,7 @@ from rclpy.duration import Duration
 
 from std_msgs.msg import Bool
 
-TIMEBASE = 0.1    # Timebase for the timer and PrimThread [s]
+TIMEBASE = 0.02    # Timebase for the timer and PrimThread [s]
 TIMEBASE_ACCELERATION = 1
 
 class MotionControllerNode(Node):
@@ -111,27 +111,12 @@ class MotionControllerNode(Node):
             axis = self.controller.move_to_point(self.distance_left)
 
             if ((self.controller.accelerated_axis[0]) & (axis == "X")):
-                # Acceleration phase
-                self.Accelerate("X", float(self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("X", 0.0)
-                
-                # Constant velocity phase
-                self.axis_speed[0] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.axis_time[0] = self.distance_left[0] / self.axis_speed[0]
-                time.sleep(self.axis_time[0])
-                
-                # Deceleration phase
-                self.Accelerate("X", float(-self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("X", 0.0)
-                self.distance_left[0] = 0
-                self.controller.accel = 0
-
-                # These are stopping indications for the simulator
-                # Shall not be used in production!
-                self.cmd.activate_gripper = True
-                self.publisher_command.publish(self.cmd)
+                #"""
+                while True:
+                    self.controller.PDController(self.dist_x, self.robot_x, 1, 1, TIMEBASE)
+                    self.Accelerate("X", self.controller.accel)
+                        
+                    time.sleep(0.1)
             
 
             if ((self.controller.accelerated_axis[1]) & (axis == "Y")):

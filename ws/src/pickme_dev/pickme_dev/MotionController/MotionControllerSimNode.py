@@ -149,6 +149,11 @@ class MotionControllerSimNode(Node):
         plt.axvline(self.start_time, color = 'blue', label = 'Simulation Begin')
         plt.axvline(self.sim_done_time, color = 'blue', label = 'Simulation End')
         plt.axhline(self.coordinate, color = 'g', label = "Target")
+        plt.axhline(0.3, color = 'red', label = 'X-Axis length', linestyle='--')
+        plt.axhline(0, color = 'red', linestyle='--')
+        if (any(position) > 0.3 or any(position) < 0):
+            plt.fill_between(time, position, 0.3, where=(position > 0.3), facecolor='none', hatch='//', edgecolor='red', label='Outside of Axis boundry')
+            plt.fill_between(time, position, 0, where=(position < 0), facecolor='none', hatch='//', edgecolor='red')
         plt.legend()
         plt.grid()
 

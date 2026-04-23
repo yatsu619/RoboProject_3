@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/yatheesh/ros2_ws/install/goto_interfaces/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/ro45_ros2_pickrobot_serial/ro45_ros2_pickrobot_serial/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ros2",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}

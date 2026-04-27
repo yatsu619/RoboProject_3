@@ -79,6 +79,10 @@ class MotionControllerNode(Node):
             self.dist_y = msg.dist_y
             self.dist_z = msg.dist_z
 
+            print(self.dist_x)
+            print(self.dist_x)
+            print(self.dist_x)
+
 
     def robot_pos_callback(self, msg: RobotPos):
         with self.robot_pos_lock:
@@ -97,9 +101,9 @@ class MotionControllerNode(Node):
     def PrimThread(self):
         """Primary thread that executes all the code"""
 
-        self.cmd.accel_x = self.controller_x.PDController(self.dist_x, self.robot_x, 1, 6, TIMEBASE)
-        self.cmd.accel_y = self.controller_y.PDController(self.dist_y, self.robot_y, 1, 6, TIMEBASE)
-        self.cmd.accel_z = self.controller_z.PDController(self.dist_z, self.robot_z, 1, 6, TIMEBASE)
+        self.cmd.accel_x = self.controller_x.PDController(self.dist_x, self.robot_x, 1, 2, TIMEBASE)
+        self.cmd.accel_y = self.controller_y.PDController(self.dist_y, self.robot_y, 1, 2, TIMEBASE)
+        self.cmd.accel_z = self.controller_z.PDController(self.dist_z, self.robot_z, 1, 2, TIMEBASE)
         self.publisher_command.publish(self.cmd)
 
 

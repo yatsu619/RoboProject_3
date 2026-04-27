@@ -10,7 +10,7 @@ from .MotionControllerLogic import MotionControllerLogic
 import matplotlib.pyplot as plt
 
 TIMEBASE = 0.01 # 50Hz
-
+DIST_TOLERABLE_ERR = 0.001
 
 class MotionControllerSimNode(Node):
     def __init__(self):
@@ -58,6 +58,8 @@ class MotionControllerSimNode(Node):
 
         self.loops = 0
         self.oversampling = 0
+
+        self.time_tolerable_err_x = 0
 
     def external_debug_callback(self, msg: ExtDebug):
         dista_x = msg.dist_x
@@ -115,6 +117,16 @@ class MotionControllerSimNode(Node):
         velocity = np.cumsum(accel) * TIMEBASE
         position = np.cumsum(velocity) * TIMEBASE
 
+        # Time at which the tolerable error was
+        for i in range(0, (len(position) - 1)):
+            dist_err = self.coordinate - position[i]
+            if (dist_err < DIST_TOLERABLE_ERR):
+                print(" ")
+                print("Target coord: ", self.coordinate)
+                print("Tolerable time: ", time[i])
+                self.time_tolerable_err_x = time[i]
+                break
+
         # Acceleration plot
         plt.subplot(3, 1, 1)
         plt.title("Acceleration plot")
@@ -148,6 +160,7 @@ class MotionControllerSimNode(Node):
         plt.ylabel("Distance [m]")
         plt.axvline(self.start_time, color = 'blue', label = 'Simulation Begin')
         plt.axvline(self.sim_done_time, color = 'blue', label = 'Simulation End')
+        plt.axvline(self.time_tolerable_err_x, color = 'green', label = 'Tolerable Error', linestyle = '--')
         plt.axhline(self.coordinate, color = 'g', label = "Target")
         plt.axhline(0.3, color = 'red', label = 'X-Axis length', linestyle='--')
         plt.axhline(0, color = 'red', linestyle='--')

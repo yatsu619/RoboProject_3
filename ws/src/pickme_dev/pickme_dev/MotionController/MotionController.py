@@ -5,13 +5,12 @@ from rclpy.node import Node
 import threading
 import time
 from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug
-from .MotionControllerLogic import MotionControllerLogic
+from .MotionControllerLogic import MotionControllerLogic, Controller
 from rclpy.duration import Duration
 
 from std_msgs.msg import Bool
 
-TIMEBASE = 0.02    # Timebase for the timer and PrimThread [s]
-TIMEBASE_ACCELERATION = 1
+TIMEBASE = 0.1    # Timebase for the timer and PrimThread [s]
 
 class MotionControllerNode(Node):
     def __init__(self):
@@ -68,7 +67,10 @@ class MotionControllerNode(Node):
         self.last_distance = 0
         self.distance_left = [0, 0, 0]
 
-        self.controller = MotionControllerLogic()
+        self.controller_logic = MotionControllerLogic()
+        self.controller_x = Controller()
+        self.controller_y = Controller()
+        self.controller_z = Controller()
     
 
     def external_debug_callback(self, msg: ExtDebug):
@@ -76,10 +78,6 @@ class MotionControllerNode(Node):
             self.dist_x = msg.dist_x
             self.dist_y = msg.dist_y
             self.dist_z = msg.dist_z
-
-            if (self.dist_x or self.dist_y or self.dist_z != 0):
-                if (self.controller.busy == False):
-                    self.coords_ready = True
 
 
     def robot_pos_callback(self, msg: RobotPos):
@@ -99,86 +97,10 @@ class MotionControllerNode(Node):
     def PrimThread(self):
         """Primary thread that executes all the code"""
 
-        # Only receive new coords if controller isn't Busy and if transmitted distance is > 0.
-        if ((self.coords_ready == True) & (self.controller.busy == False)):
-            self.controller.accelerated_axis = [False, False, False]
-            self.distance_left = [self.dist_x, self.dist_y, self.dist_z]
-            self.controller.busy = True
-            self.coords_ready = False
-        
-        # if coordinates are ready moves the robot.
-        elif (self.controller.busy == True):
-            axis = self.controller.move_to_point(self.distance_left)
-
-            if ((self.controller.accelerated_axis[0]) & (axis == "X")):
-                #"""
-                while True:
-                    self.controller.PDController(self.dist_x, self.robot_x, 1, 1, TIMEBASE)
-                    self.Accelerate("X", self.controller.accel)
-                        
-                    time.sleep(0.1)
-            
-
-            if ((self.controller.accelerated_axis[1]) & (axis == "Y")):
-                # Acceleration phase
-                self.Accelerate("Y", float(self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("Y", 0.0)
-                
-                # Constant velocity phase
-                self.axis_speed[1] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.axis_time[1] = self.distance_left[1] / self.axis_speed[1]
-                time.sleep(self.axis_time[1])
-                
-                # Deceleration phase
-                self.Accelerate("Y", float(-self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("Y", 0.0)
-                self.distance_left[1] = 0
-                self.controller.accel = 0
-            
-
-            if ((self.controller.accelerated_axis[2]) & (axis == "Z")):
-                # Acceleration phase
-                self.Accelerate("Z", float(self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("Z", 0.0)
-                
-                # Constant velocity phase
-                self.axis_speed[2] = self.controller.accel * TIMEBASE_ACCELERATION
-                self.axis_time[2] = self.distance_left[2] / self.axis_speed[2]
-                time.sleep(self.axis_time[2])
-                
-                # Deceleration phase
-                self.Accelerate("Z", float(-self.controller.accel))
-                time.sleep(TIMEBASE_ACCELERATION)
-                self.Accelerate("Z", 0.0)
-                self.distance_left[2] = 0
-                self.controller.accel = 0
-            
-
-            if ((self.distance_left[0] or self.distance_left[1] or self.distance_left[2]) == 0):
-                print("Deaktiviere controller. Nichtmehr Busy")
-                self.controller.busy = False
-        
-        # This Branch is only triggered if there are no coordinates ready and controller isn't Busy
-        else:
-            self.distance_left = [0, 0, 0]
-            print("Motioncontroller inaktiv. Erwartet koordinaten über '/external_debug")
-            print('verwende: ros2 topic pub --once /external_debug ro45_portalrobot_interfaces/msg/ExtDebug "{dist_x: 0.5, dist_y: 0.5, dist_z: 0.5}" um die achsen zu verfahren.\n')
-    
-
-    def Accelerate(self, axis: str, acceleration: float):
-        match axis:
-            case "X":
-                self.cmd.accel_x = acceleration
-                self.publisher_command.publish(self.cmd)
-            case "Y":
-                self.cmd.accel_y = acceleration
-                self.publisher_command.publish(self.cmd)
-            case "Z":
-                self.cmd.accel_z = acceleration
-                self.publisher_command.publish(self.cmd)
+        self.cmd.accel_x = self.controller_x.PDController(self.dist_x, self.robot_x, 1, 6, TIMEBASE)
+        self.cmd.accel_y = self.controller_y.PDController(self.dist_y, self.robot_y, 1, 6, TIMEBASE)
+        self.cmd.accel_z = self.controller_z.PDController(self.dist_z, self.robot_z, 1, 6, TIMEBASE)
+        self.publisher_command.publish(self.cmd)
 
 
 def main():

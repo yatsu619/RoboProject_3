@@ -4,7 +4,6 @@ ACCEL_MAX = 0.1             # in [m/s²]
 ACCEL_MIN = 0               # in [m/s²]
 ACCEL = 0.05                # in [m/s²]
 DIST_TOLERABLE_ERR = 0.001  # Allowable error in the distance traveled in [m]
-KP = 20
 
 
 class MotionControllerLogic:
@@ -24,59 +23,27 @@ class MotionControllerLogic:
         self.d_out = 0
         self.controller_error = 0
 
-    def move_to_point(self, distance: list) -> str:
-        """
-        ## Description
-        Moves a selected axis a specified distance
+class Controller:
+    def __init__(self):
+        self.last_error = 0
 
-        :param distance: Distance the selected axis should move
-        :type list: list
-        :return string: String of the axis that is moved
-        """
+    def PDController(self, target: float, actual: float, kp: float, kd: float, dt: float) -> float:
+        accel = 0
+        error = target - actual
+    
+        error_diff = (error - self.last_error) / dt
+        self.last_error = error
 
-        # X-Axis
-        if ((abs(distance[0]) >= DIST_TOLERABLE_ERR) & (self.accelerated_axis[0] == False)):
-            self.accelerated_axis[0] = True
-            if (distance[0] < 0):
-                self.accel = -ACCEL
-            else:
-                self.accel = ACCEL
-            return "X"
+        p_out = kp * error
+        d_out = kd * error_diff
+
+        combined = p_out + d_out
+
+        if combined > ACCEL:
+            accel = ACCEL
+        elif combined < -ACCEL:
+            accel = -ACCEL
+        else:
+            accel = combined
         
-        # Y-Axis
-        if ((abs(distance[1]) >= DIST_TOLERABLE_ERR) & (self.accelerated_axis[1] == False)):
-            self.accelerated_axis[1] = True
-            if (distance[1] < 0):
-                self.accel = -ACCEL
-            else:
-                self.accel = ACCEL
-            return "Y"
-        
-        # Z-Axis
-        if ((abs(distance[2]) >= DIST_TOLERABLE_ERR) & (self.accelerated_axis[2] == False)):
-            self.accelerated_axis[2] = True
-            if (distance[2] < 0):
-                self.accel = -ACCEL
-            else:
-                self.accel = ACCEL
-            return "Z"
-        
-    def PDController(self, target: float, actual: float, kp: float, kd: float, dt: float):
-            self.controller_error = target - actual
-        
-            # Numerische Ableitung des Fehlers (deutlich stabiler für PD)
-            # de/dt = (error_neu - error_alt) / dt
-            error_diff = (self.controller_error - self.last_error) / dt
-            self.last_error = self.controller_error
-
-            self.p_out = kp * self.controller_error
-            self.d_out = kd * error_diff # Hier positiv, da error_diff die Annäherung beschreibt
-
-            combined = self.p_out + self.d_out
-
-            if combined > ACCEL:
-                self.accel = ACCEL
-            elif combined < -ACCEL:
-                self.accel = -ACCEL
-            else:
-                self.accel = combined
+        return accel

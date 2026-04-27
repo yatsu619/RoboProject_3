@@ -21,6 +21,7 @@ devel_isolated/
 *.cfgc
 /cfg/cpp/
 /cfg/*.py
+.vscode/
 
 # Ignore generated docs
 *.dox

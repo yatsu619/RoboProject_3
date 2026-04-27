@@ -2,26 +2,36 @@ import cv2
 import numpy as np
 
 
-# Schachbrettgröße: Anzahl innerer Ecken (nicht Felder!)
-# Bei einem 9x6 Schachbrett: 8 Ecken breit, 5 Ecken hoch
-SCHACHBRETT = (8, 5)
+# ChArUco Board Einstellungen
+FELDER_X = 7
+FELDER_Y = 5
+FELDGROESSE = 0.024   # 2.4cm in Metern
+MARKERGROESSE = 0.018 # ca. 75% der Feldgröße
 
-# Echte Größe eines Feldes in Metern (messen nach dem Ausdrucken!)
-FELDGROESSE = 0.025  # 25mm = 0.025m
+CAMERA_INDEX = 2
 
+# ArUco Dictionary
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
-# Vorbereitung: 3D-Punkte des Schachbretts (immer gleich, da flach)
-objp = np.zeros((SCHACHBRETT[0] * SCHACHBRETT[1], 3), np.float32)
-objp[:, :2] = np.mgrid[0:SCHACHBRETT[0], 0:SCHACHBRETT[1]].T.reshape(-1, 2)
-objp *= FELDGROESSE
+# ChArUco Board erstellen
+board = cv2.aruco.CharucoBoard(
+    (FELDER_X, FELDER_Y),
+    FELDGROESSE,
+    MARKERGROESSE,
+    aruco_dict
+)
 
-# Listen für gefundene Punkte
-objpoints = []  # 3D Punkte in der echten Welt
-imgpoints = []  # 2D Punkte im Bild
+detector = cv2.aruco.CharucoDetector(board)
 
-cap = cv2.VideoCapture(0)
+objpoints = []
+imgpoints = []
+
+cap = cv2.VideoCapture(CAMERA_INDEX)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+
 print('Kamera geöffnet.')
-print('Halte das Schachbrettmuster vor die Kamera.')
+print('Halte das ChArUco Board vor die Kamera.')
 print('Drücke "s" um ein Bild zu speichern (mind. 15-20 Bilder).')
 print('Drücke "q" um die Kalibrierung zu starten.')
 
@@ -34,17 +44,16 @@ while True:
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Schachbrettecken suchen
-    gefunden, ecken = cv2.findChessboardCorners(gray, SCHACHBRETT, None)
+    charuco_corners, charuco_ids, marker_corners, marker_ids = detector.detectBoard(gray)
 
-    # Wenn Schachbrett gefunden → grün einzeichnen
     anzeige = frame.copy()
-    if gefunden:
-        cv2.drawChessboardCorners(anzeige, SCHACHBRETT, ecken, gefunden)
-        cv2.putText(anzeige, 'Schachbrett erkannt!', (10, 30),
+
+    if charuco_ids is not None and len(charuco_ids) > 4:
+        cv2.aruco.drawDetectedCornersCharuco(anzeige, charuco_corners, charuco_ids)
+        cv2.putText(anzeige, 'Board erkannt!', (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     else:
-        cv2.putText(anzeige, 'Kein Schachbrett gefunden', (10, 30),
+        cv2.putText(anzeige, 'Board nicht gefunden', (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
     cv2.putText(anzeige, f'Gespeicherte Bilder: {anzahl}', (10, 70),
@@ -54,34 +63,30 @@ while True:
 
     taste = cv2.waitKey(1)
 
-    # "s" drücken → Bild speichern
-    if taste == ord('s') and gefunden:
-        objpoints.append(objp)
-        imgpoints.append(ecken)
-        anzahl += 1
-        print(f'Bild {anzahl} gespeichert.')
+    if taste == ord('s'):
+        if charuco_ids is not None and len(charuco_ids) > 4:
+            objpoints.append(charuco_corners)
+            imgpoints.append(charuco_ids)
+            anzahl += 1
+            print(f'Bild {anzahl} gespeichert.')
+        else:
+            print('Board nicht erkannt - bitte neu positionieren.')
 
-    elif taste == ord('s') and not gefunden:
-        print('Schachbrett nicht erkannt - bitte neu positionieren.')
-
-    # "q" drücken → Kalibrierung starten
     elif taste == ord('q'):
         break
 
 cap.release()
 cv2.destroyAllWindows()
 
-# Kalibrierung berechnen
 if anzahl < 5:
     print(f'Zu wenige Bilder ({anzahl}). Mindestens 5 werden benötigt.')
 else:
     print(f'Kalibrierung wird berechnet mit {anzahl} Bildern...')
 
-    ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
-        objpoints, imgpoints, gray.shape[::-1], None, None
+    ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(
+        objpoints, imgpoints, board, gray.shape[::-1], None, None
     )
 
-    # Parameter speichern
     np.savez('camera_params.npz',
              camera_matrix=camera_matrix,
              dist_coeffs=dist_coeffs)

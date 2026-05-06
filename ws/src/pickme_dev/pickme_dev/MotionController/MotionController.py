@@ -18,6 +18,12 @@ TCP_OFFSET_X = 0
 TCP_OFFSET_Y = 0
 TCP_OFFSET_Z = 0
 
+# World Coordinate System offset in [m]
+WCS_OFFSET_X = 0
+WCS_OFFSET_Y = 0
+WCS_OFFSET_Z = 0
+
+
 class MotionControllerNode(Node):
     def __init__(self):
         super().__init__('motioncontroller_node')
@@ -64,10 +70,15 @@ class MotionControllerNode(Node):
         self.robot_pos_lock = threading.Lock()
 
         # Current homing position
-        # when homing is complete the then current position becomes an offset added to homepos
+        # when Endstops are reached, the then current position becomes an offset added to homepos
         self.homepos_x = 0
         self.homepos_y = 0
         self.homepos_z = 0
+
+        # Position in WCS
+        self.wcs_pos_x = 0
+        self.wcs_pos_y = 0
+        self.wcs_pos_z = 0
 
         # Point received via topic
         self.dist_x = 0
@@ -91,9 +102,9 @@ class MotionControllerNode(Node):
             self.dist_y = msg.dist_y
             self.dist_z = msg.dist_z
 
-            print(self.dist_x)
-            print(self.dist_x)
-            print(self.dist_x)
+            #print(self.dist_x)
+            #print(self.dist_x)
+            #print(self.dist_x)
 
 
     def robot_pos_callback(self, msg: RobotPos):
@@ -103,11 +114,11 @@ class MotionControllerNode(Node):
             self.robot_z = msg.pos_z
             
             # Debug for terminal
-            print("\n---- Current Robot Position ----")
-            print("Position X: ", self.robot_x)
-            print("Position Y: ", self.robot_y)
-            print("Position Z: ", self.robot_z)
-            print("       ---- DEBUG END ----      ")
+            #print("\n---- Current Robot Position ----")
+            #print("Position X: ", self.robot_x)
+            #print("Position Y: ", self.robot_y)
+            #print("Position Z: ", self.robot_z)
+            #print("       ---- DEBUG END ----      ")
 
 
     def PrimThread(self):
@@ -121,13 +132,36 @@ class MotionControllerNode(Node):
 
             # Change to dynamically calculated sleep
             time.sleep(20)
+            
             self.homepos_x = self.robot_x - TCP_OFFSET_X
             self.homepos_y = self.robot_y - TCP_OFFSET_Y
             self.homepos_z = self.robot_z - TCP_OFFSET_Z
+
+            self.wcs_pos_x = self.homepos_x - WCS_OFFSET_X
+            self.wcs_pos_y = self.homepos_y - WCS_OFFSET_Y
+            self.wcs_pos_z = self.homepos_z - WCS_OFFSET_Z
+
+            self.init_complete = True
+
+            # Debug
+            print("Aktuelle Homepos TCP (X Y Z): ", self.homepos_x, " ", self.homepos_y, " ", self.homepos_z)
+            print("Aktuelle Robopos (X Y Z):     ", self.robot_x, " ", self.robot_y, " ", self.robot_z)
+            print("Repräsentation im WKS (X Y Z): ", self.wcs_pos_x, " ", self.wcs_pos_y, " ", self.wcs_pos_z)
+            print("Homing Komplett")
+            print("Aktuelle position im Robointernen system (X Y Z): ", (self.robot_x - self.wcs_pos_x), " ", (self.robot_y - self.wcs_pos_y), " ", (self.robot_z - self.wcs_pos_z))
+            print("[WARNUNG] NACHFOLGENDE REGELUNG AKTUELL DEAKTIVIERT! TIMER FÜR 'PrimThread()' DEAKTIVIERT! [WARNUNG]")
+            while True:
+                self.timer.cancel()
+                time.sleep(1)
         else:
-            self.cmd.accel_x = self.controller_x.PDController(self.dist_x, self.robot_x, 1, 2, TIMEBASE)
-            self.cmd.accel_y = self.controller_y.PDController(self.dist_y, self.robot_y, 1, 2, TIMEBASE)
-            self.cmd.accel_z = self.controller_z.PDController(self.dist_z, self.robot_z, 1, 2, TIMEBASE)
+            # Current position to represent in Robot internal coordinate system
+            current_x = self.robot_x - self.wcs_pos_x
+            current_y = self.robot_y - self.wcs_pos_y
+            current_z = self.robot_z - self.wcs_pos_z
+
+            self.cmd.accel_x = self.controller_x.PDController(self.dist_x, current_x, 1, 2, TIMEBASE)
+            self.cmd.accel_y = self.controller_y.PDController(self.dist_y, current_y, 1, 2, TIMEBASE)
+            self.cmd.accel_z = self.controller_z.PDController(self.dist_z, current_z, 1, 2, TIMEBASE)
             self.publisher_command.publish(self.cmd)
 
     

@@ -8,11 +8,13 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RobotCmd.msg"
   "msg/RobotPos.msg"
   "msg/ExtDebug.msg"
+  "msg/PredictedPos.msg"
 )
 
 ament_package()

@@ -30,8 +30,8 @@ class WaypointPreditionNode(Node):
         )
 
         self.last_msg = None
-        self.lookahead_sec = 1.0
-
+        self.lookahead_sec = 1.0 # die zeit wo wir die kordinaten von dem objekt in der zukunft berechnen 
+        self.z = 0.0  # das förderband ist laut kordinaten ursprung layer null in der z achse 
         self.get_logger().info('WaypointPredictionNode gestartet.')
 
     def robot_pos_callback(self, msg: RobotPosStamped):
@@ -52,11 +52,11 @@ class WaypointPreditionNode(Node):
         pred_y = msg.y + vy * self.lookahead_sec
 
         pred_msg = PredictedPos()
-        pred_msg.stamp = msg.stamp
+        
         pred_msg.x = pred_x
         pred_msg.y = pred_y
-        pred_msg.vx = vx
-        pred_msg.vy = vy
+        pred_msg.z= self.z 
+        pred_msg.obj_id = msg.obj_id 
 
         self.publisher_prediction.publish(pred_msg)
 
@@ -69,6 +69,7 @@ class WaypointPreditionNode(Node):
         self.last_msg = msg
 
     def time_diff_sec(self, t1: Time, t2: Time) -> float:
+        ''' funktion die den zeitunterschied von zwei zeitstempeln berechnet erster Teil sekunden zweiter Teil nanosekunden '''
         return (t2.sec - t1.sec) + (t2.nanosec - t1.nanosec) * 1e-9
 
 

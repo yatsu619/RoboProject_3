@@ -14,9 +14,9 @@ from std_msgs.msg import Bool
 TIMEBASE = 0.1
 
 # Toolcenterpoint offset in [m]
-TCP_OFFSET_X = 0
-TCP_OFFSET_Y = 0
-TCP_OFFSET_Z = 0
+TCP_OFFSET_X = 0.060
+TCP_OFFSET_Y = 0.013
+TCP_OFFSET_Z = 0.250
 
 # World Coordinate System offset in [m]
 WCS_OFFSET_X = 0
@@ -128,6 +128,7 @@ class MotionControllerNode(Node):
             self.AccelerateAxis("X", 0)
             self.AccelerateAxis("Y", 0)
             self.AccelerateAxis("Z", 0)
+            self.publisher_command.publish(self.cmd)
             self.DriveToHomePos()
 
             # Change to dynamically calculated sleep
@@ -162,6 +163,7 @@ class MotionControllerNode(Node):
             self.cmd.accel_x = self.controller_x.PDController(self.dist_x, current_x, 1, 2, TIMEBASE)
             self.cmd.accel_y = self.controller_y.PDController(self.dist_y, current_y, 1, 2, TIMEBASE)
             self.cmd.accel_z = self.controller_z.PDController(self.dist_z, current_z, 1, 2, TIMEBASE)
+            self.cmd.activate_gripper = False
             self.publisher_command.publish(self.cmd)
 
     
@@ -172,10 +174,12 @@ class MotionControllerNode(Node):
         self.AccelerateAxis("X", self.controller_logic.accel_avg)
         self.AccelerateAxis("Y", self.controller_logic.accel_avg)
         self.AccelerateAxis("Z", self.controller_logic.accel_avg)
+        self.publisher_command.publish(self.cmd)
         time.sleep(1)
         self.AccelerateAxis("X", 0)
         self.AccelerateAxis("Y", 0)
         self.AccelerateAxis("Z", 0)
+        self.publisher_command.publish(self.cmd)
 
     def AccelerateAxis(self, axis: str, accel: int) -> None:
         """Wrapper to accelerate axis for 1 second. Used in
@@ -188,8 +192,6 @@ class MotionControllerNode(Node):
             self.cmd.accel_y = accel
         elif axis == "Z":
             self.cmd.accel_z = accel
-        
-        self.publisher_command.publish(self.cmd)
 
 
 def main():

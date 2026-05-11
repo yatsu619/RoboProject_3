@@ -134,8 +134,8 @@ class MotionControllerNode(Node):
             # Change to dynamically calculated sleep
             time.sleep(20)
             
-            self.homepos_x = self.robot_x - TCP_OFFSET_X
-            self.homepos_y = self.robot_y - TCP_OFFSET_Y
+            self.homepos_x = self.robot_x + TCP_OFFSET_X
+            self.homepos_y = self.robot_y + TCP_OFFSET_Y
             self.homepos_z = self.robot_z - TCP_OFFSET_Z
 
             self.wcs_pos_x = self.homepos_x - WCS_OFFSET_X

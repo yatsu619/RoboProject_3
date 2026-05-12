@@ -15,6 +15,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RobotPos.msg"
   "msg/ExtDebug.msg"
   "msg/PredictedPos.msg"
+  "msg/RobotPosStamped.msg"
+  DEPENDENCIES builtin_interfaces
 )
+
 
 ament_package()

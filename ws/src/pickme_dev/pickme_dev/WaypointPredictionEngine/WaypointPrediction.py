@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from builtin_interfaces.msg import Time
-from ro45_portalrobot_interfaces import RobotPosStamped, PredictedPos
+from ro45_portalrobot_interfaces.msg import RobotPosStamped, PredictedPos
 
 
 

@@ -4,7 +4,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 import threading
 import time
-from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug
+from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug, PredictedPos
 from .MotionControllerLogic import MotionControllerLogic, Controller
 from rclpy.duration import Duration
 
@@ -22,6 +22,9 @@ TCP_OFFSET_Z = 0.250
 WCS_OFFSET_X = 0
 WCS_OFFSET_Y = 0
 WCS_OFFSET_Z = 0
+
+# X & Y Tolerances in [m]
+XY_TOLERANCE = 0.001
 
 
 class MotionControllerNode(Node):
@@ -42,13 +45,12 @@ class MotionControllerNode(Node):
             10
         )
 
-        """
-        self.subscriber_movetowaypoint = self.create_subscription(
-            interface,
-            topic,
+        self.subscriber_prediction = self.create_subscription(
+            PredictedPos,
+            '/predicted_position',
+            self.prediction_pos_callback,
             10
         )
-        """
 
         self.subscriber_extdebug = self.create_subscription(
             ExtDebug,
@@ -81,10 +83,18 @@ class MotionControllerNode(Node):
         self.wcs_pos_z = 0
 
         # Point received via topic
-        self.dist_x = 0
-        self.dist_y = 0
-        self.dist_z = 0
+        self.pos_x = 0
+        self.pos_y = 0
+        self.pos_z = 0
+        self.obj_id = 0
         self.external_debug_lock = threading.Lock()
+
+        # First Point that was received with obj_id
+        self.first_obj_id = -1
+        self.target_x = 0.0
+        self.target_y = 0.0
+        self.state = "IDLE" # Possible "IDLE", "APPROACH", "DESCEND"
+
 
         # PD-Controller instances
         self.controller_logic = MotionControllerLogic()
@@ -95,16 +105,12 @@ class MotionControllerNode(Node):
         # Self explanatory
         self.init_complete = False
     
-
+    # Remove upon final release
     def external_debug_callback(self, msg: ExtDebug):
         with self.external_debug_lock:
-            self.dist_x = msg.dist_x
-            self.dist_y = msg.dist_y
-            self.dist_z = msg.dist_z
-
-            #print(self.dist_x)
-            #print(self.dist_x)
-            #print(self.dist_x)
+            self.pos_x = msg.dist_x
+            self.pos_y = msg.dist_y
+            self.pos_z = msg.dist_z
 
 
     def robot_pos_callback(self, msg: RobotPos):
@@ -119,6 +125,24 @@ class MotionControllerNode(Node):
             #print("Position Y: ", self.robot_y)
             #print("Position Z: ", self.robot_z)
             #print("       ---- DEBUG END ----      ")
+    
+
+    def prediction_callback(self, msg: PredictedPos):
+        with self.external_debug_lock:
+            if msg.obj_id >= 0 and self.state == "IDLE":
+                self.pos_x = msg.x
+                self.pos_y = msg.y
+                self.pos_z = msg.z
+                self.obj_id = msg.obj_id
+                self.state = "APPROACH"
+
+                # Debug for terminal
+                print("\n---- Current Robot Position ----")
+                print("Predicted X: ", self.pos_x)
+                print("Predicted Y: ", self.pos_y)
+                print("Predicted Z: ", self.pos_z)
+                print("Tracking Obj: ", self.obj_id)
+                print("       ---- DEBUG END ----      ")
 
 
     def PrimThread(self):
@@ -128,6 +152,7 @@ class MotionControllerNode(Node):
             self.AccelerateAxis("X", 0)
             self.AccelerateAxis("Y", 0)
             self.AccelerateAxis("Z", 0)
+            self.cmd.activate_gripper = False
             self.publisher_command.publish(self.cmd)
             self.DriveToHomePos()
 
@@ -160,10 +185,34 @@ class MotionControllerNode(Node):
             current_y = self.robot_y - self.wcs_pos_y
             current_z = self.robot_z - self.wcs_pos_z
 
-            self.cmd.accel_x = self.controller_x.PDController(self.dist_x, current_x, 1, 2, TIMEBASE)
-            self.cmd.accel_y = self.controller_y.PDController(self.dist_y, current_y, 1, 2, TIMEBASE)
-            self.cmd.accel_z = self.controller_z.PDController(self.dist_z, current_z, 1, 2, TIMEBASE)
-            self.cmd.activate_gripper = False
+            match self.state:
+                case "IDLE":
+                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 2, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 2, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 2, TIMEBASE)
+                    self.cmd.activate_gripper = False
+
+                case "APPROACH":
+                    self.cmd.accel_x = self.controller_x.PDController(self.pos_x, current_x, 1, 2, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(self.pos_y, current_y, 1, 2, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(self.pos_z, current_z, 1, 2, TIMEBASE)
+                    self.cmd.activate_gripper = False
+
+                    error_x = abs(self.target_x - current_x)
+                    error_y = abs(self.target_y - current_y)
+                    if (error_x < XY_TOLERANCE) and (error_y < XY_TOLERANCE):
+                        self.state = "DESCEND"
+
+                case "DESCEND":
+                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 2, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 2, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(  0.01  , current_z, 1, 2, TIMEBASE)
+                    self.cmd.activate_gripper = True
+
+                    if self.pos_z > 0.01:
+                        print("Done")
+                        self.state = "IDLE"
+
             self.publisher_command.publish(self.cmd)
 
     

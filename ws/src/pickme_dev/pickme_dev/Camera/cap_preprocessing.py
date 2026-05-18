@@ -1,76 +1,83 @@
 import cv2
 import numpy as np
-import os
 
+# Zeitstempel muss dann auch im topic verschickt werden
+# Randpixel weg bis nur eins übrig bleibt, erosion
 
-OBEN_LINKS   = (100, 100)
-OBEN_RECHTS  = (1534, 100)
-UNTEN_LINKS  = (128, 726)
-UNTEN_RECHTS = (1534, 686)
-
-ROI_X_MIN = OBEN_LINKS[0]
-ROI_X_MAX = OBEN_RECHTS[0]
-ROI_Y_MIN = OBEN_LINKS[1]
-ROI_Y_MAX = UNTEN_LINKS[1]
-
-'''
-def detect_aruco_markers(gray_img):                             
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    params = cv2.aruco.DetectorParameters()
-    detector = cv2.aruco.ArucoDetector(aruco_dict, params)
-    corners, ids, rejected = detector.detectMarkers(gray_img)
-    return corners, ids                                         # 3--2
-                                                                # 1--0
-corners, id = detect_aruco_markers(binary)
-if id == 3:  # obere linker aruco marker
-    punkt_3 = corners[2]
-    x_3, y_3 = punkt_3
-if id == 2:  # obere rechter aruco marker
-    punkt_2 = corners[3]
-    x_2, y_2 = punkt_2
-if id == 1:  # unterer linker aruco marker
-    punkt_1 = corners[1]
-    x_1, y_1 = punkt_1
-if id == 0:  # unterer rechter aruco marker
-    punkt_0 = corners[0]
-    x_0, y_0 = punkt_0
-'''
-
-ordner = 'ws/src/pickme_dev/pickme_dev/Camera/test_images/Productive/Einhorn'
-bilder = sorted(os.listdir(ordner))
-index = 0
-
-'''Für die Kamera
 cap = cv2.VideoCapture(2)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-'''
+
+for _ in range(10):
+    cap.read()
+
+def detect_aruco_markers(frame):
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_ARUCO_ORIGINAL)
+    params = cv2.aruco.DetectorParameters()
+    detector = cv2.aruco.ArucoDetector(aruco_dict, params)
+    frame = cv2.convertScaleAbs(frame, alpha=2.0, beta=50)  # aufhellen
+    corners, ids, _ = detector.detectMarkers(frame)
+    return corners, ids                                     # 67--69
+                                                            # 187--420
+
+# --- ROI aus ArUco Markern berechnen (einmalig) ---
+#ret, first_frame = cap.read()
+#corners, ids = detect_aruco_markers(first_frame)
 
 while True:
-    frame = cv2.imread(os.path.join(ordner, bilder[index]))
-    '''
+    ret, first_frame = cap.read()
+    corners, ids = detect_aruco_markers(first_frame)
+    if ids is not None and all(m in ids.flatten() for m in [67, 69, 187, 420]):
+        break
+    print('Warte auf alle 4 Marker...')
+
+for i, marker_id in enumerate(ids.flatten()):
+    if marker_id == 67:
+        punkt_67  = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+    if marker_id == 69:
+        punkt_69  = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+    if marker_id == 187:
+        punkt_187 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+    if marker_id == 420:
+        punkt_420 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+
+print(f'punkt_67: {punkt_67}')
+print(f'punkt_69: {punkt_69}')
+print(f'punkt_187: {punkt_187}')
+print(f'punkt_420: {punkt_420}')
+
+ROI_X_MIN = min(punkt_67[0],  punkt_187[0])
+ROI_X_MAX = max(punkt_69[0],  punkt_420[0])
+ROI_Y_MIN = min(punkt_67[1],  punkt_69[1])
+ROI_Y_MAX = max(punkt_187[1], punkt_420[1])
+
+print(f'ROI: ({ROI_X_MIN}, {ROI_Y_MIN}) bis ({ROI_X_MAX}, {ROI_Y_MAX})')
+
+# --- Hauptloop ---
+while True:
     ret, frame = cap.read()
     if not ret:
-    continue
-    '''
-    grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #Graustufen
-    grey = cv2.medianBlur(grey, 5) #Medianfilter 
-    binary = cv2.threshold(grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1] #Otsu Schwellwert 
-    #vorher Closing evtl. größer
-    #Opening: kleines Rauschen entfernen und entfernt Zusammenhangskomponenten
-    kernel = np.ones((7, 7), np.uint8) #7x7 Quadrat
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-    roi_binary = binary[ROI_Y_MIN:ROI_Y_MAX, ROI_X_MIN:ROI_X_MAX] # ROI ausschneiden
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(roi_binary) #Connected Components nur auf dem ROI
+        continue
 
-    #richtiges Objekt filtern
+    grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    grey = cv2.medianBlur(grey, 5)
+    binary = cv2.threshold(grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    kernel = np.ones((7, 7), np.uint8)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+    roi_binary = binary[ROI_Y_MIN:ROI_Y_MAX, ROI_X_MIN:ROI_X_MAX]
+
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(roi_binary)
+
     biggest_label = -1
     biggest_area = 0
     for i in range(1, num_labels):
-        area  = stats[i, cv2.CC_STAT_AREA]
+        area   = stats[i, cv2.CC_STAT_AREA]
         w_comp = stats[i, cv2.CC_STAT_WIDTH]
         h_comp = stats[i, cv2.CC_STAT_HEIGHT]
-        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 150 and area > biggest_area:
+        print(f'Label {i}: area={area}, w={w_comp}, h={h_comp}')
+        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 150 and h_comp < 500 and area > biggest_area:
             biggest_area = area
             biggest_label = i
 
@@ -79,34 +86,19 @@ while True:
         y = stats[biggest_label, cv2.CC_STAT_TOP]
         w = stats[biggest_label, cv2.CC_STAT_WIDTH]
         h = stats[biggest_label, cv2.CC_STAT_HEIGHT]
-
         center_x = x + w // 2
         center_y = y + h // 2
+        print(f'Bounding Box: {x} {y} {w} {h} | Zentrum: {center_x} {center_y}')
 
-        print(f'Bild: {bilder[index]} | Bounding Box: {x} {y} {w} {h} | Zentrum: {center_x} {center_y}')
-
-        #Offset für Zeichnen im Originalbild draufaddieren
         cv2.rectangle(frame, (x + ROI_X_MIN, y + ROI_Y_MIN), (x + w + ROI_X_MIN, y + h + ROI_Y_MIN), (0, 255, 0), 2)
         cv2.circle(frame, (center_x + ROI_X_MIN, center_y + ROI_Y_MIN), 5, (0, 0, 255), -1)
 
-    #ROI Bereich einzeichnen
     cv2.rectangle(frame, (ROI_X_MIN, ROI_Y_MIN), (ROI_X_MAX, ROI_Y_MAX), (255, 0, 0), 2)
-    cv2.putText(frame, bilder[index], (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
     cv2.imshow('Bild', frame)
     cv2.imshow('ROI Binary', roi_binary)
-    taste = cv2.waitKey(0)
 
-    if taste == 83:
-        index = min(index + 1, len(bilder) - 1)
-    elif taste == 81:
-        index = max(index - 1, 0)
-    elif taste == ord('q'):
+    if cv2.waitKey(1) == ord('q'):
         break
 
-    '''
-    if cv2.waitKey(1) == ord('q'):
-    break
-    cap.release()
-    '''
-
+cap.release()
 cv2.destroyAllWindows()

@@ -8,7 +8,7 @@
       "includePath": [
         "/home/yatheesh/ros2_ws/install/goto_interfaces/include/**",
         "/opt/ros/humble/include/**",
-        "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/ro45_ros2_pickrobot_serial/ro45_ros2_pickrobot_serial/include/**",
+        "/home/yatheesh/tmp/RoboProject_3/ws/src/ro45_ros2_pickrobot_serial/ro45_ros2_pickrobot_serial/include/**",
         "/usr/include/**"
       ],
       "name": "ros2",

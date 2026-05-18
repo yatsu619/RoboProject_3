@@ -120,14 +120,14 @@ class MotionControllerNode(Node):
             self.robot_z = msg.pos_z
             
             # Debug for terminal
-            #print("\n---- Current Robot Position ----")
-            #print("Position X: ", self.robot_x)
-            #print("Position Y: ", self.robot_y)
-            #print("Position Z: ", self.robot_z)
-            #print("       ---- DEBUG END ----      ")
+            print("\n---- Current Robot Position ----")
+            print("Position X: ", self.robot_x)
+            print("Position Y: ", self.robot_y)
+            print("Position Z: ", self.robot_z)
+            print("       ---- DEBUG END ----      ")
     
 
-    def prediction_callback(self, msg: PredictedPos):
+    def prediction_pos_callback(self, msg: PredictedPos):
         with self.external_debug_lock:
             if msg.obj_id >= 0 and self.state == "IDLE":
                 self.pos_x = msg.x
@@ -149,9 +149,9 @@ class MotionControllerNode(Node):
         """Primary thread that executes all the code"""
 
         if self.init_complete == False:
-            self.AccelerateAxis("X", 0)
-            self.AccelerateAxis("Y", 0)
-            self.AccelerateAxis("Z", 0)
+            self.AccelerateAxis("X", 0.0)
+            self.AccelerateAxis("Y", 0.0)
+            self.AccelerateAxis("Z", 0.0)
             self.cmd.activate_gripper = False
             self.publisher_command.publish(self.cmd)
             self.DriveToHomePos()
@@ -175,10 +175,10 @@ class MotionControllerNode(Node):
             print("Repräsentation im WKS (X Y Z): ", self.wcs_pos_x, " ", self.wcs_pos_y, " ", self.wcs_pos_z)
             print("Homing Komplett")
             print("Aktuelle position im Robointernen system (X Y Z): ", (self.robot_x - self.wcs_pos_x), " ", (self.robot_y - self.wcs_pos_y), " ", (self.robot_z - self.wcs_pos_z))
-            print("[WARNUNG] NACHFOLGENDE REGELUNG AKTUELL DEAKTIVIERT! TIMER FÜR 'PrimThread()' DEAKTIVIERT! [WARNUNG]")
-            while True:
-                self.timer.cancel()
-                time.sleep(1)
+            #print("[WARNUNG] NACHFOLGENDE REGELUNG AKTUELL DEAKTIVIERT! TIMER FÜR 'PrimThread()' DEAKTIVIERT! [WARNUNG]")
+            #while True:
+            #    self.timer.cancel()
+            #    time.sleep(1)
         else:
             # Current position to represent in Robot internal coordinate system
             current_x = self.robot_x - self.wcs_pos_x
@@ -222,12 +222,12 @@ class MotionControllerNode(Node):
 
         self.AccelerateAxis("X", self.controller_logic.accel_avg)
         self.AccelerateAxis("Y", self.controller_logic.accel_avg)
-        self.AccelerateAxis("Z", self.controller_logic.accel_avg)
+        self.AccelerateAxis("Z", -(self.controller_logic.accel_avg))
         self.publisher_command.publish(self.cmd)
         time.sleep(1)
-        self.AccelerateAxis("X", 0)
-        self.AccelerateAxis("Y", 0)
-        self.AccelerateAxis("Z", 0)
+        self.AccelerateAxis("X", 0.0)
+        self.AccelerateAxis("Y", 0.0)
+        self.AccelerateAxis("Z", 0.0)
         self.publisher_command.publish(self.cmd)
 
     def AccelerateAxis(self, axis: str, accel: int) -> None:

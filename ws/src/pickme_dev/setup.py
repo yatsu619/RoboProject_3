@@ -25,8 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             "motioncontroller_node = pickme_dev.MotionController.MotionController:main",
-            "motioncontroller_simulator_node = pickme_dev.MotionController.MotionControllerSimNode:main",
-            "WaypointPredition_node = pickme_dev.WaypointPredictionEngine.WaypointPrediction:main "
+            "WaypointPredition_node = pickme_dev.WaypointPredictionEngine.WaypointPrediction:main",
+            "cam_node = pickme_dev.Camera.cam_node:main"
         ],
     },
 )

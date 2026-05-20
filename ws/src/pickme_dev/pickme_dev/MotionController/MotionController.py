@@ -23,9 +23,16 @@ WCS_OFFSET_X = 0
 WCS_OFFSET_Y = 0
 WCS_OFFSET_Z = 0
 
-# X & Y Tolerances in [m]
-XY_TOLERANCE = 0.001
+# Sorting bins coordinates expressed as offset from WCS in [m]
+SORTING_BIN_UNICORN_X = 0
+SORTING_BIN_UNICORN_Y = 0
 
+SORTING_BIN_CAT_X = 0
+SORTING_BIN_CAT_Y = 0
+
+# XY-Margin
+MARGIN_X = 0.01
+MARGIN_Y = 0.01
 
 class MotionControllerNode(Node):
     def __init__(self):
@@ -82,28 +89,24 @@ class MotionControllerNode(Node):
         self.wcs_pos_y = 0
         self.wcs_pos_z = 0
 
-        # Point received via topic
+        # Point / Data received via topic
         self.pos_x = 0
         self.pos_y = 0
         self.pos_z = 0
         self.obj_id = 0
+        self.detected_type = "CAT" # Possible states: "CAT", "UNICORN"
         self.external_debug_lock = threading.Lock()
 
-        # First Point that was received with obj_id
-        self.first_obj_id = -1
-        self.target_x = 0.0
-        self.target_y = 0.0
-        self.state = "IDLE" # Possible "IDLE", "APPROACH", "DESCEND"
-
-
-        # PD-Controller instances
+        # PD-Controller and logic instance(s)
         self.controller_logic = MotionControllerLogic()
         self.controller_x = Controller()
         self.controller_y = Controller()
         self.controller_z = Controller()
 
-        # Self explanatory
+        # Should be self explanatory
+        self.state = "IDLE" # Possible states: "IDLE", "PICK", "PLACE", "APPROACH" (APPROACH is just for debugging (so the z-axis doesn't move))
         self.init_complete = False
+        self.pick_and_place_complete = False
     
     # Remove upon final release
     def external_debug_callback(self, msg: ExtDebug):
@@ -129,7 +132,7 @@ class MotionControllerNode(Node):
 
     def prediction_pos_callback(self, msg: PredictedPos):
         with self.external_debug_lock:
-            if msg.obj_id >= 0 and self.state == "IDLE":
+            if msg.obj_id >= 0:
                 self.pos_x = msg.x
                 self.pos_y = msg.y
                 self.pos_z = msg.z
@@ -152,15 +155,14 @@ class MotionControllerNode(Node):
             self.AccelerateAxis("X", 0.0)
             self.AccelerateAxis("Y", 0.0)
             self.AccelerateAxis("Z", 0.0)
-            self.cmd.activate_gripper = False
             self.publisher_command.publish(self.cmd)
             self.DriveToHomePos()
 
             # Change to dynamically calculated sleep
             time.sleep(20)
             
-            self.homepos_x = self.robot_x + TCP_OFFSET_X
-            self.homepos_y = self.robot_y + TCP_OFFSET_Y
+            self.homepos_x = self.robot_x - TCP_OFFSET_X
+            self.homepos_y = self.robot_y - TCP_OFFSET_Y
             self.homepos_z = self.robot_z - TCP_OFFSET_Z
 
             self.wcs_pos_x = self.homepos_x - WCS_OFFSET_X
@@ -174,11 +176,6 @@ class MotionControllerNode(Node):
             print("Aktuelle Robopos (X Y Z):     ", self.robot_x, " ", self.robot_y, " ", self.robot_z)
             print("Repräsentation im WKS (X Y Z): ", self.wcs_pos_x, " ", self.wcs_pos_y, " ", self.wcs_pos_z)
             print("Homing Komplett")
-            print("Aktuelle position im Robointernen system (X Y Z): ", (self.robot_x - self.wcs_pos_x), " ", (self.robot_y - self.wcs_pos_y), " ", (self.robot_z - self.wcs_pos_z))
-            #print("[WARNUNG] NACHFOLGENDE REGELUNG AKTUELL DEAKTIVIERT! TIMER FÜR 'PrimThread()' DEAKTIVIERT! [WARNUNG]")
-            #while True:
-            #    self.timer.cancel()
-            #    time.sleep(1)
         else:
             # Current position to represent in Robot internal coordinate system
             current_x = self.robot_x - self.wcs_pos_x
@@ -187,38 +184,60 @@ class MotionControllerNode(Node):
 
             match self.state:
                 case "IDLE":
-                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 2, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 2, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 2, TIMEBASE)
+                    # Robot does nothing and holds the current position
+                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
+
+                case "PICK":
+                    # Robot picks up object from conveyor belt
+                    self.cmd.accel_x = self.controller_x.PDController(self.pos_x, current_x, 1, 3, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(self.pos_y, current_y, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(0.01, current_z, 1, 3, TIMEBASE)
+                    self.cmd.activate_gripper = True
+                
+                case "PLACE":
+                    # Robot (hopefully) has picked up an object and drops it into a bin
+                    match self.detected_type:
+                        case "CAT":
+                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_CAT_X, current_x, 1, 3, TIMEBASE)
+                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_CAT_Y, current_y, 1, 3, TIMEBASE)
+                            self.cmd.accel_z = self.controller_z.PDController(0, current_z, 1, 3, TIMEBASE)
+                            self.cmd.activate_gripper = True
+
+                        case "UNICORN":
+                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x, 1, 3, TIMEBASE)
+                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_UNICORN_Y, current_y, 1, 3, TIMEBASE)
+                            self.cmd.accel_z = self.controller_z.PDController(0, current_z, 1, 3, TIMEBASE)
+                            self.cmd.activate_gripper = True
+
+                        case _:
+                            print("Detected object is not valid")
+
+                    if (abs(current_x - SORTING_BIN_CAT_X) < MARGIN_X) and (abs(current_y - SORTING_BIN_CAT_Y) < MARGIN_Y):
+                        self.cmd.activate_gripper = False
+                        self.state = "IDLE"
+                        self.pick_and_place_complete = True
+                    if (abs(current_x - SORTING_BIN_UNICORN_X) < MARGIN_X) and (abs(current_y - SORTING_BIN_UNICORN_Y) < MARGIN_Y):
+                        self.cmd.activate_gripper = False
+                        self.state = "IDLE"
+                        self.pick_and_place_complete = True
 
                 case "APPROACH":
-                    self.cmd.accel_x = self.controller_x.PDController(self.pos_x, current_x, 1, 2, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(self.pos_y, current_y, 1, 2, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(self.pos_z, current_z, 1, 2, TIMEBASE)
+                    # Robot approaches a point expressed in WCS form (just X and Y, as Z=0 is the conveyor belt itself)  -  DEBUG only!
+                    self.cmd.accel_x = self.controller_x.PDController(self.pos_x, current_x, 1, 3, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(self.pos_y, current_y, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
-                    error_x = abs(self.target_x - current_x)
-                    error_y = abs(self.target_y - current_y)
-                    if (error_x < XY_TOLERANCE) and (error_y < XY_TOLERANCE):
-                        self.state = "DESCEND"
-
-                case "DESCEND":
-                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 2, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 2, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(  0.01  , current_z, 1, 2, TIMEBASE)
-                    self.cmd.activate_gripper = True
-
-                    if self.pos_z > 0.01:
-                        print("Done")
-                        self.state = "IDLE"
 
             self.publisher_command.publish(self.cmd)
 
     
     def DriveToHomePos(self):
         """Logic that drives all axis to their homing position
-        (Endstops)"""
+        (positive Endstops)"""
 
         self.AccelerateAxis("X", self.controller_logic.accel_avg)
         self.AccelerateAxis("Y", self.controller_logic.accel_avg)
@@ -231,9 +250,8 @@ class MotionControllerNode(Node):
         self.publisher_command.publish(self.cmd)
 
     def AccelerateAxis(self, axis: str, accel: int) -> None:
-        """Wrapper to accelerate axis for 1 second. Used in
-        "DriveToHomePos" only and to initialize acceleration
-        to 0 in the beginning."""
+        """Sets the values of the ROS2 message interface 'RobotCmd'.
+        Only used in 'DriveToHomePos' and 'PrimThread' as initialization."""
 
         if axis == "X":
             self.cmd.accel_x = accel
@@ -241,6 +259,7 @@ class MotionControllerNode(Node):
             self.cmd.accel_y = accel
         elif axis == "Z":
             self.cmd.accel_z = accel
+        self.cmd.activate_gripper = False
 
 
 def main():

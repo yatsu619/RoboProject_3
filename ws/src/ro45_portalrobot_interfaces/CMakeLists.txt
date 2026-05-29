@@ -16,6 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ExtDebug.msg"
   "msg/PredictedPos.msg"
   "msg/RobotPosStamped.msg"
+  "msg/PredictedPosdelay.msg"
   DEPENDENCIES builtin_interfaces
 )
 

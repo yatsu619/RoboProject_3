@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from builtin_interfaces.msg import Time
-from ro45_portalrobot_interfaces.msg import RobotPosStamped, PredictedPos
+from ro45_portalrobot_interfaces.msg import RobotPosStamped, PredictedPosdelay
 from collections import deque
 
 
@@ -26,8 +26,8 @@ class WaypointPreditionNode(Node):
         )
 
         self.publisher_prediction = self.create_publisher(
-            PredictedPos,
-            '/predicted_position',
+            PredictedPosdelay,
+            '/predicted_positiondelay',
             10
         )
          
@@ -59,7 +59,7 @@ class WaypointPreditionNode(Node):
         pred_x = msg.x + vx * self.lookahead_sec
         pred_y = msg.y + vy * self.lookahead_sec
 
-        pred_msg = PredictedPos()
+        pred_msg = PredictedPosdelay()
         
         pred_msg.x = pred_x
         pred_msg.y = pred_y

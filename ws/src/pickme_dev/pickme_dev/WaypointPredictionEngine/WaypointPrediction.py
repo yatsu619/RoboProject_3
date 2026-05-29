@@ -4,6 +4,8 @@ from rclpy.node import Node
 
 from builtin_interfaces.msg import Time
 from ro45_portalrobot_interfaces.msg import RobotPosStamped, PredictedPos
+from collections import deque
+
 
 
 
@@ -28,15 +30,21 @@ class WaypointPreditionNode(Node):
             '/predicted_position',
             10
         )
+         
+        self.x_buffer = deque(maxlen=5)
+        self.y_buffer = deque(maxlen=5)
+        self.z_buffer = deque(maxlen=5)
 
-        self.last_msg = None
+        self.last_msg= None
+        self.last_msg_avg = None
         self.lookahead_sec = 1.0 # die zeit wo wir die kordinaten von dem objekt in der zukunft berechnen 
         self.z = 0.0  # das förderband ist laut kordinaten ursprung layer null in der z achse 
         self.get_logger().info('WaypointPredictionNode gestartet.')
 
     def robot_pos_callback(self, msg: RobotPosStamped):
-        if self.last_msg is None:
-            self.last_msg = msg
+        if self.last_msg_avg is None:
+            self.last_msg_avg = self.moving_average(msg.x,msg.y)
+            self.last_msg=msg
             return
 
         dt = self.time_diff_sec(self.last_msg.stamp, msg.stamp)
@@ -44,9 +52,9 @@ class WaypointPreditionNode(Node):
             self.get_logger().warn('Ungültiger Zeitunterschied.')
             self.last_msg = msg
             return
-
-        vx = (msg.x - self.last_msg.x) / dt
-        vy = (msg.y - self.last_msg.y) / dt
+        avg_x, avg_y = self.moving_average(msg.x, msg.y)
+        vx = (avg_x - self.last_msg_avg[0]) / dt
+        vy = (avg_y - self.last_msg_avg[1]) / dt
 
         pred_x = msg.x + vx * self.lookahead_sec
         pred_y = msg.y + vy * self.lookahead_sec
@@ -67,11 +75,19 @@ class WaypointPreditionNode(Node):
         )
 
         self.last_msg = msg
+        self.last_msg_avg = self.moving_average(msg.x,msg.y)
 
     def time_diff_sec(self, t1: Time, t2: Time) -> float:
         ''' funktion die den zeitunterschied von zwei zeitstempeln berechnet erster Teil sekunden zweiter Teil nanosekunden '''
         return (t2.sec - t1.sec) + (t2.nanosec - t1.nanosec) * 1e-9
+    def moving_average(self, x, y):
+        self.x_buffer.append(x)
+        self.y_buffer.append(y)
 
+        avg_x = sum(self.x_buffer) / len(self.x_buffer)
+        avg_y = sum(self.y_buffer) / len(self.y_buffer)
+
+        return avg_x, avg_y
 
 def main(args=None):
     rclpy.init(args=args)

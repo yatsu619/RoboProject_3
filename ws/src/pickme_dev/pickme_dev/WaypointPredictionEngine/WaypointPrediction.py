@@ -63,12 +63,17 @@ class WaypointPreditionNode(Node):
         #self.lookahead_sec= abs(self.null_point-msg.y)/vy 
         self.time_to_0= datetime.now() + timedelta(seconds=self.lookahead_sec)
 
+        ts = self.time_to_0.timestamp()
+        obj_zero = Time()
+        obj_zero.sec = int(ts)
+        obj_zero.nanosec = int((ts - obj_zero.sec) * 1e9)
+
         pred_msg = PredictedPosdelay()
         
         pred_msg.vx = vx
         pred_msg.y = msg.y
         pred_msg.z = self.z 
-        pred_msg.obj_zero = self.time_to_0
+        pred_msg.obj_zero = obj_zero
         pred_msg.obj_id = msg.obj_type 
 
         self.publisher_prediction.publish(pred_msg)

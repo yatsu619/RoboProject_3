@@ -4,13 +4,13 @@ import os
 
 
 # Ordner zum Speichern (anpassen je nach Objekt: Cat oder MagicUnicorn)
-SAVE_FOLDER = 'Images/Productive/Quadrat'
+SAVE_FOLDER = 'test_images2/Kreis'
 CAMERA_INDEX = 2
 
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
 # Kameraparameter laden
-data = np.load('camera_params.npz')
+data = np.load('/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/camera_params.npz')
 camera_matrix = data['camera_matrix']
 dist_coeffs = data['dist_coeffs']
 

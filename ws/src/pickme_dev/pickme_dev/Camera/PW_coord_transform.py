@@ -4,10 +4,10 @@ import numpy as np
 # Ursprung (0,0) = Mitte zwischen Marker 67 und 69 (rechte Seite)
 # X positiv nach links, Y positiv nach oben
 MARKER_WORLD_COORDS = {
-    67:  (0.000,  0.0615),
-    69:  (0.000, -0.0615),
-    187: (0.156,  0.0615),
-    420: (0.156, -0.0615),
+    67:  (0.000,  0.0620),
+    69:  (0.000, -0.0620),
+    187: (-0.200,  0.0620),
+    420: (-0.200, -0.0620),
 }
 
 def calibrate(corners, ids):

@@ -7,6 +7,7 @@ from cap_preprocessing import setup, process_frame
 
 class CamNode(Node):
 
+    #ros2 run pickme_dev cam_node
     def __init__(self):
         super().__init__('cam_node')
         self.publisher = self.create_publisher(CamData, '/CamData', 10)

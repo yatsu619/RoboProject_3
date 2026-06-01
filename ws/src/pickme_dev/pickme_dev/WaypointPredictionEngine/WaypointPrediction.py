@@ -35,7 +35,7 @@ class WaypointPreditionNode(Node):
         self.x_buffer = deque(maxlen=5)
         self.y_buffer = deque(maxlen=5)
        
-
+        
         self.last_msg= None
         self.last_msg_avg = None
         self.lookahead_sec = None  # die zeit wo wir die kordinaten von dem objekt in der zukunft berechnen 

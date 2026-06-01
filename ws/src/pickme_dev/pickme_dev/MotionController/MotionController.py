@@ -124,6 +124,7 @@ class MotionControllerNode(Node):
 
             self.robot_x = msg.pos_x
             self.robot_y = msg.pos_y
+            self.robot_z = msg.pos_z
 
             self.delta_x = abs(self.old_robot_x - self.robot_x)
             self.delta_y = abs(self.old_robot_y - self.robot_y)

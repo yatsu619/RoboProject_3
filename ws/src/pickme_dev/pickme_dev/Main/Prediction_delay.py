@@ -121,3 +121,19 @@ class DelayBufferNode(Node):
         pred_msg.obj_id = obj_id
 
         self.publisher.publish(pred_msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = DelayBufferNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

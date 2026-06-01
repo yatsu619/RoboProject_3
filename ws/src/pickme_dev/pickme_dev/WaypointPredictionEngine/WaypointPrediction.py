@@ -1,7 +1,7 @@
 
 import rclpy
 from rclpy.node import Node
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from builtin_interfaces.msg import Time
 from ro45_portalrobot_interfaces.msg import CamData, PredictedPosdelay
@@ -21,7 +21,7 @@ class WaypointPreditionNode(Node):
 
         self.subscriber_position = self.create_subscription(
             CamData,
-            '/CamDat',
+            '/CamData',
             self.robot_pos_callback,
             10
         )
@@ -34,7 +34,7 @@ class WaypointPreditionNode(Node):
          
         self.x_buffer = deque(maxlen=5)
         self.y_buffer = deque(maxlen=5)
-        self.z_buffer = deque(maxlen=5)
+       
 
         self.last_msg= None
         self.last_msg_avg = None
@@ -61,7 +61,7 @@ class WaypointPreditionNode(Node):
 
         self.lookahead_sec= abs(self.null_point-msg.x)/vx 
         #self.lookahead_sec= abs(self.null_point-msg.y)/vy 
-        self.time_to_0= datetime.now()+ self.lookahead_sec
+        self.time_to_0= datetime.now() + timedelta(seconds=self.lookahead_sec)
 
         pred_msg = PredictedPosdelay()
         
@@ -76,7 +76,7 @@ class WaypointPreditionNode(Node):
         
 
         self.last_msg = msg
-        self.last_msg_avg = self.moving_average(msg.x,msg.y)
+        self.last_msg_avg = (avg_x, avg_y)
 
     def time_diff_sec(self, t1, t2) -> float:
         ''' funktion die den zeitunterschied von zwei zeitstempeln berechnet erster Teil sekunden zweiter Teil nanosekunden '''

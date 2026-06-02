@@ -35,10 +35,10 @@ SORTING_BIN_CAT_Y = -0.170
 # XY-Margins
 MARGIN_X = 0.010
 MARGIN_Y = 0.010
-MARGIN_Z = 0.001
+MARGIN_Z = 0.010
 
 # Pickheight conveyor
-PICKHEIGHT_ABOVE_CONVEYOR = 0.005
+PICKHEIGHT_ABOVE_CONVEYOR = 0.010
 
 
 class MotionControllerNode(Node):
@@ -137,7 +137,7 @@ class MotionControllerNode(Node):
                 self.predicted_obj_pos_x = msg.x
                 self.predicted_obj_pos_y = msg.y
                 self.obj_id = msg.obj_id
-                self.state = "APPROACH"
+                self.state = "PICK"
 
                 # Debug for terminal
                 print("\n---- Current Robot Position ----")
@@ -196,9 +196,9 @@ class MotionControllerNode(Node):
                     self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
                     self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
-                    self.cmd.activate_gripper = True
+                    self.cmd.activate_gripper = False
 
-                    if (current_x >= (PICKHEIGHT_ABOVE_CONVEYOR - MARGIN_Z)) and (self.delta_z < MARGIN_Z):
+                    if (current_x <= PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
                         print("Picked something up. Next state: Place")
                         self.state = "PLACE"
                 
@@ -235,7 +235,7 @@ class MotionControllerNode(Node):
                     # Robot approaches a point expressed in WCS form (just X and Y, as Z=0 is the conveyor belt itself)  -  DEBUG only!
                     self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
 

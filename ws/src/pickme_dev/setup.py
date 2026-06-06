@@ -27,7 +27,7 @@ setup(
             "motioncontroller_node = pickme_dev.MotionController.MotionController:main",
             "WaypointPredition_node = pickme_dev.WaypointPredictionEngine.WaypointPrediction:main",
             "cam_node = pickme_dev.Camera.cam_node:main",
-            "simulator_node = pickme_dev.MotionController.motionsim:main"
+            "simulator_node = pickme_dev.MotionController.motionsim:main",
             "delay_buffer_node = pickme_dev.Main.Predictio_delay:main"
         ],
     },

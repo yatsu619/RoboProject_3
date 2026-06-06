@@ -10,7 +10,7 @@ from rclpy.duration import Duration
 
 from std_msgs.msg import Bool
 
-# ros2 topic pub --once /predicted_position ro45_portalrobot_interfaces/msg/PredictedPos "{x: -0.2, y: -0.1, z: 0, obj_id: 1}"
+# ros2 topic pub --once /predicted_position ro45_portalrobot_interfaces/msg/PredictedPos "{x: -0.2, y: 0, obj_id: 1}"
 # Timer Timebase in [s]
 TIMEBASE = 0.1
 
@@ -38,7 +38,7 @@ MARGIN_Y = 0.010
 MARGIN_Z = 0.010
 
 # Pickheight conveyor
-PICKHEIGHT_ABOVE_CONVEYOR = 0.010
+PICKHEIGHT_ABOVE_CONVEYOR = -0.005
 
 
 class MotionControllerNode(Node):
@@ -114,6 +114,7 @@ class MotionControllerNode(Node):
         # Should be self explanatory
         self.state = "IDLE" # Possible states: "IDLE", "PICK", "PLACE", "APPROACH" (APPROACH is just for debugging (so the z-axis doesn't move))
         self.init_complete = False
+        self.new_object_lock = False
 
 
     def robot_pos_callback(self, msg: RobotPos):
@@ -133,7 +134,7 @@ class MotionControllerNode(Node):
 
     def prediction_pos_callback(self, msg: PredictedPos):
         with self.external_debug_lock:
-            if (msg.obj_id >= 0):
+            if (msg.obj_id >= 0 and self.new_object_lock == False):
                 self.predicted_obj_pos_x = msg.x
                 self.predicted_obj_pos_y = msg.y
                 self.obj_id = msg.obj_id
@@ -172,6 +173,7 @@ class MotionControllerNode(Node):
             self.wcs_rcs_offset_z = WCS_OFFSET_TO_TCP_Z - self.homepos_tcp_z
 
             self.init_complete = True
+            self.state = "IDLE"
             self.timer.reset()
 
             # Debug
@@ -189,7 +191,7 @@ class MotionControllerNode(Node):
                 case "IDLE":
                     self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(-20.0, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
                 case "PICK":
@@ -198,7 +200,11 @@ class MotionControllerNode(Node):
                     self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
-                    if (current_x <= PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
+                    if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
+                        print("\n", "current_z: ", current_z)
+                        print("robotpos: ", self.robot_z)
+                        print("Pickheight: ", (PICKHEIGHT_ABOVE_CONVEYOR * 1.1), "\n")
+                        self.new_object_lock = True
                         print("Picked something up. Next state: Place")
                         self.state = "PLACE"
                 
@@ -210,10 +216,11 @@ class MotionControllerNode(Node):
                             self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
                             self.cmd.activate_gripper = True
 
-                            if (abs(current_x - SORTING_BIN_CAT_X) < MARGIN_X) and (self.delta_y == 0):
+                            if (current_x < SORTING_BIN_CAT_X) and (self.delta_y == 0):
                                 print("Pick and Placed CAT")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
+                                self.new_object_lock = False
 
                         case "UNICORN":
                             self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x, 1, 3, TIMEBASE)
@@ -221,23 +228,20 @@ class MotionControllerNode(Node):
                             self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
                             self.cmd.activate_gripper = True
 
-                            if (abs(current_x - SORTING_BIN_UNICORN_X) < MARGIN_X) and (self.delta_y == 0):
+                            if (current_x < SORTING_BIN_UNICORN_X) and (self.delta_y == 0):
                                 print("Pick and Placed UNICORN")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
-
-                        case _:
-                            print("Detected object is not valid. Mode back to idle")
-                            self.state = "IDLE"
 
 
                 case "APPROACH":
                     # Robot approaches a point expressed in WCS form (just X and Y, as Z=0 is the conveyor belt itself)  -  DEBUG only!
                     self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
+                    print("Accel x | y | z:", self.cmd.accel_x, " ", self.cmd.accel_y, " ", self.cmd.accel_z)
 
             self.publisher_command.publish(self.cmd)
 

@@ -17,8 +17,8 @@ ENDSTOP_X_NEG = -0.40
 ENDSTOP_Y_POS = 0.000
 ENDSTOP_Y_NEG = -0.20
 
-ENDSTOP_Z_POS = 0.300
-ENDSTOP_Z_NEG = 0.000
+ENDSTOP_Z_POS = 0.000
+ENDSTOP_Z_NEG = -0.345
 
 
 class simulator(Node):
@@ -42,7 +42,7 @@ class simulator(Node):
         # Randomly generate init position (VOR dem Timer und direkt in den Zustand)
         self.last_integrated_positionx = -float(random.randint(0, 40)) / 100
         self.last_integrated_positiony = -float(random.randint(0, 20)) / 100
-        self.last_integrated_positionz = float(random.randint(0, 30)) / 100
+        self.last_integrated_positionz = -float(random.randint(0, 30)) / 100
 
         self.timer = self.create_timer(TIMEBASE, self.main, callback_group=self.callback_group)
 
@@ -161,8 +161,8 @@ class simulator(Node):
         plt.title("X-Axis")
         plt.plot(self.time_array, self.pos_x_array, '-')
         plt.ylabel("Position X")
-        plt.axhline(ENDSTOP_X_POS, color = 'red', linestyle='--', label='Endstops')
-        plt.axhline(ENDSTOP_X_NEG, color = 'red', linestyle='--')
+        plt.axhline(ENDSTOP_X_POS, color = 'green', linestyle='--', label='Endstop Positive (Home)')
+        plt.axhline(ENDSTOP_X_NEG, color = 'red', linestyle='--', label='Endstop Negative')
         plt.legend()
         plt.grid()
 
@@ -171,8 +171,8 @@ class simulator(Node):
         plt.title("Y-Axis")
         plt.plot(self.time_array, self.pos_y_array, '-')
         plt.ylabel("Position Y")
-        plt.axhline(ENDSTOP_Y_POS, color = 'red', linestyle='--', label='Endstops')
-        plt.axhline(ENDSTOP_Y_NEG, color = 'red', linestyle='--')
+        plt.axhline(ENDSTOP_Y_POS, color = 'green', linestyle='--', label='Endstop Positive (Home)')
+        plt.axhline(ENDSTOP_Y_NEG, color = 'red', linestyle='--', label='Endstop Negative')
         plt.legend()
         plt.grid()
 
@@ -180,9 +180,10 @@ class simulator(Node):
         plt.subplot(3, 1, 3)
         plt.title("Z-Axis")
         plt.plot(self.time_array, self.pos_z_array, '-')
+        plt.gca().invert_yaxis()
         plt.ylabel("Position Z")
-        plt.axhline(ENDSTOP_Z_POS, color = 'red', linestyle='--', label='Endstops')
-        plt.axhline(ENDSTOP_Z_NEG, color = 'red', linestyle='--')
+        plt.axhline(ENDSTOP_Z_NEG, color = 'green', linestyle='--', label='Endstop Negative (Home)')
+        plt.axhline(ENDSTOP_Z_POS, color = 'red', linestyle='--', label='Endstop Positive (conveyor belt)')
         plt.legend()
         plt.grid()
 

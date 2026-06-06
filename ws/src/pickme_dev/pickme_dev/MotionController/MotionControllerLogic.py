@@ -1,6 +1,6 @@
 # Contains the logic for the Motioncontroller
 
-ACCEL_MAX = 0.1             # in [m/s²]
+ACCEL_MAX = 0.02            # in [m/s²]
 ACCEL_MIN = 0               # in [m/s²]
 ACCEL = 0.01                # in [m/s²]
 DIST_TOLERABLE_ERR = 0.001  # Allowable error in the distance traveled in [m]

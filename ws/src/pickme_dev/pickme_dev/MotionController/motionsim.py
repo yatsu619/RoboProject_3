@@ -20,6 +20,9 @@ ENDSTOP_Y_NEG = -0.20
 ENDSTOP_Z_POS = 0.000
 ENDSTOP_Z_NEG = -0.345
 
+TCP_OFFSET_FROM_ENDSTOP_X = 0.060
+TCP_OFFSET_FROM_ENDSTOP_Y = 0.013
+TCP_OFFSET_FROM_ENDSTOP_Z = 0.250
 
 class simulator(Node):
     def __init__(self):
@@ -54,6 +57,11 @@ class simulator(Node):
         self.pos_x_array = []
         self.pos_y_array = []
         self.pos_z_array = []
+
+        self.pos_x_tcp_array = []
+        self.pos_y_tcp_array = []
+        self.pos_z_tcp_array = []
+
         self.time_array = []
         self.time = 0
 
@@ -124,6 +132,11 @@ class simulator(Node):
         self.pos_x_array.append(self.position_x)
         self.pos_y_array.append(self.position_y)
         self.pos_z_array.append(self.position_z)
+
+        self.pos_x_tcp_array.append(self.position_x - TCP_OFFSET_FROM_ENDSTOP_X)
+        self.pos_y_tcp_array.append(self.position_y - TCP_OFFSET_FROM_ENDSTOP_Y)
+        self.pos_z_tcp_array.append(self.position_z + TCP_OFFSET_FROM_ENDSTOP_Z)
+
         self.time_array.append(self.time)
         self.time = self.time + TIMEBASE # Zeitbasis in Sekunden für korrekten Plot
 
@@ -159,7 +172,8 @@ class simulator(Node):
         # Plot X
         plt.subplot(3, 1, 1)
         plt.title("X-Axis")
-        plt.plot(self.time_array, self.pos_x_array, '-')
+        plt.plot(self.time_array, self.pos_x_array, '-', color='black')
+        plt.plot(self.time_array, self.pos_x_tcp_array, '-', color='blue')
         plt.ylabel("Position X")
         plt.axhline(ENDSTOP_X_POS, color = 'green', linestyle='--', label='Endstop Positive (Home)')
         plt.axhline(ENDSTOP_X_NEG, color = 'red', linestyle='--', label='Endstop Negative')
@@ -169,7 +183,8 @@ class simulator(Node):
         # Plot Y
         plt.subplot(3, 1, 2)
         plt.title("Y-Axis")
-        plt.plot(self.time_array, self.pos_y_array, '-')
+        plt.plot(self.time_array, self.pos_y_array, '-', color='black')
+        plt.plot(self.time_array, self.pos_y_tcp_array, '-', color='blue')
         plt.ylabel("Position Y")
         plt.axhline(ENDSTOP_Y_POS, color = 'green', linestyle='--', label='Endstop Positive (Home)')
         plt.axhline(ENDSTOP_Y_NEG, color = 'red', linestyle='--', label='Endstop Negative')
@@ -179,7 +194,8 @@ class simulator(Node):
         # Plot Z
         plt.subplot(3, 1, 3)
         plt.title("Z-Axis")
-        plt.plot(self.time_array, self.pos_z_array, '-')
+        plt.plot(self.time_array, self.pos_z_array, '-', color='black')
+        plt.plot(self.time_array, self.pos_z_tcp_array, '-', color='blue')
         plt.gca().invert_yaxis()
         plt.ylabel("Position Z")
         plt.axhline(ENDSTOP_Z_NEG, color = 'green', linestyle='--', label='Endstop Negative (Home)')

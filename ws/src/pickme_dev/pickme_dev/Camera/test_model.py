@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 import os
 import joblib
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report
 
-IMAGE_DIR = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images2"
 MODEL_PATH = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/model.pkl"
+IMAGE_DIR = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images2"
 
 CLASSES = {
     "Katze": 2,
@@ -43,16 +43,18 @@ def get_features(image_path):
     hu_raw = cv2.HuMoments(moments).flatten()
     hu_log = -np.sign(hu_raw) * np.log10(np.abs(hu_raw) + 1e-10)
 
-    hu_0 = hu_log[0]
-    hu_3 = hu_log[3]
+    return [hu_log[0], hu_log[3]]
 
-    return hu_log.tolist()
+model = joblib.load(MODEL_PATH)
 
 X = []
 y = []
 
 for folder_name, label in CLASSES.items():
     folder_path = os.path.join(IMAGE_DIR, folder_name)
+    if not os.path.exists(folder_path):
+        print(f"WARNUNG: Ordner nicht gefunden: {folder_path}")
+        continue
 
     for filename in os.listdir(folder_path):
         if not filename.endswith(".jpg") and not filename.endswith(".png"):
@@ -65,23 +67,16 @@ for folder_name, label in CLASSES.items():
             print(f"WARNUNG: Kein Objekt gefunden in {folder_name}/{filename}")
             continue
 
+        prediction = model.predict([features])[0]
         X.append(features)
         y.append(label)
-        print(f"{folder_name}/{filename} → label={label}")
 
-print(f"\nGesamt: {len(X)} Bilder geladen")
+        status = "✓" if prediction == label else "✗"
+        print(f"{status} {folder_name}/{filename} → erwartet={label}, vorhergesagt={prediction}")
 
-X = np.array(X)
 y = np.array(y)
+y_pred = np.array([model.predict([f])[0] for f in X])
 
-model = DecisionTreeClassifier(max_depth=5)
-model.fit(X, y)
-
-print(f"Trainingsgenauigkeit: {model.score(X, y) * 100:.1f}%")
-
-from sklearn.metrics import classification_report
-y_pred = model.predict(X)
+print(f"\nGesamt: {len(X)} Bilder getestet")
+print(f"Genauigkeit: {(y == y_pred).mean() * 100:.1f}%")
 print(classification_report(y, y_pred, target_names=["reject", "unicorn", "cat"]))
-
-joblib.dump(model, MODEL_PATH)
-print(f"Modell gespeichert: {MODEL_PATH}")

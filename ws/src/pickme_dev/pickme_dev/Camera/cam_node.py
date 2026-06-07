@@ -2,7 +2,8 @@ import cv2
 import rclpy
 from rclpy.node import Node
 from ro45_portalrobot_interfaces.msg import CamData
-from cap_preprocessing import setup, process_frame
+from pickme_dev.Camera.cap_preprocessing import setup, process_frame
+from pickme_dev.Camera.ml_detection import MLDetection
 
 
 class CamNode(Node):
@@ -20,6 +21,7 @@ class CamNode(Node):
             self.cap.read()
 
         self.H, self.ROI_X_MIN, self.ROI_X_MAX, self.ROI_Y_MIN, self.ROI_Y_MAX = setup(self.cap)
+        self.ml = MLDetection()
 
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.get_logger().info('CamNode gestartet')
@@ -34,7 +36,10 @@ class CamNode(Node):
 
         if world_x is not None:
             msg = CamData()
-            msg.obj_type = 'unknown'
+            label = self.ml.classify(frame)
+            if label is None:
+                return
+            msg.obj_type = label
             msg.x = world_x
             msg.y = world_y
             msg.timestamp = timestamp

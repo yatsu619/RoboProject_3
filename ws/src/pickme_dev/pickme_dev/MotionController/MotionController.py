@@ -26,10 +26,10 @@ WCS_OFFSET_TO_TCP_Z = -0.095
 
 # Sorting bins coordinates expressed as offset from WCS in [m]
 # Y-Values are slightly beyond negative endstops. This is not a bug and thus will not be fixed.
-SORTING_BIN_UNICORN_X = -0.008
+SORTING_BIN_UNICORN_X = -0.095
 SORTING_BIN_UNICORN_Y = -0.170
 
-SORTING_BIN_CAT_X = -0.017
+SORTING_BIN_CAT_X = -0.180
 SORTING_BIN_CAT_Y = -0.170
 
 # XY-Margins
@@ -191,7 +191,7 @@ class MotionControllerNode(Node):
                 case "IDLE":
                     self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(-20, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
                 case "PICK":
@@ -201,9 +201,6 @@ class MotionControllerNode(Node):
                     self.cmd.activate_gripper = False
 
                     if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
-                        print("\n", "current_z: ", current_z)
-                        print("robotpos: ", self.robot_z)
-                        print("Pickheight: ", (PICKHEIGHT_ABOVE_CONVEYOR * 1.1), "\n")
                         self.new_object_lock = True
                         print("Picked something up. Next state: Place")
                         self.state = "PLACE"
@@ -213,10 +210,10 @@ class MotionControllerNode(Node):
                         case "CAT":
                             self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_CAT_X, current_x, 1, 3, TIMEBASE)
                             self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_CAT_Y, current_y, 1, 3, TIMEBASE)
-                            self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
+                            self.cmd.accel_z = self.controller_z.PDController(-20, current_z, 1, 3, TIMEBASE)
                             self.cmd.activate_gripper = True
 
-                            if (current_x < SORTING_BIN_CAT_X) and (self.delta_y == 0):
+                            if (current_x > SORTING_BIN_CAT_X) and (self.delta_y == 0):
                                 print("Pick and Placed CAT")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
@@ -225,10 +222,10 @@ class MotionControllerNode(Node):
                         case "UNICORN":
                             self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x, 1, 3, TIMEBASE)
                             self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_UNICORN_Y, current_y, 1, 3, TIMEBASE)
-                            self.cmd.accel_z = self.controller_z.PDController(self.homepos_tcp_z, current_z, 1, 3, TIMEBASE)
+                            self.cmd.accel_z = self.controller_z.PDController(-20, current_z, 1, 3, TIMEBASE)
                             self.cmd.activate_gripper = True
 
-                            if (current_x < SORTING_BIN_UNICORN_X) and (self.delta_y == 0):
+                            if (current_x > SORTING_BIN_UNICORN_X) and (self.delta_y == 0):
                                 print("Pick and Placed UNICORN")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
@@ -236,9 +233,9 @@ class MotionControllerNode(Node):
 
                 case "APPROACH":
                     # Robot approaches a point expressed in WCS form (just X and Y, as Z=0 is the conveyor belt itself)  -  DEBUG only!
-                    self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(current_z, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_x = self.controller_x.PDController(current_z, current_x, 1, 3, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
+                    self.cmd.accel_z = self.controller_z.PDController(-20, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
                     print("Accel x | y | z:", self.cmd.accel_x, " ", self.cmd.accel_y, " ", self.cmd.accel_z)

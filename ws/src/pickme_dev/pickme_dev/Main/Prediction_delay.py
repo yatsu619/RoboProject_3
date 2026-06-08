@@ -9,7 +9,7 @@ class DelayBufferNode(Node):
     def __init__(self):
         super().__init__("delay_buffer_node")
 
-        # Parameter für Greifprozess (kann später auch als ROS-Parameter kommen)
+        
         self.greif_duration_sec = self.declare_parameter(
             "greif_duration_sec", 5.0
         )

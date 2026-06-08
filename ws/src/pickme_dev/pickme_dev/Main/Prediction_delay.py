@@ -12,7 +12,7 @@ class DelayBufferNode(Node):
         
         self.greif_duration_sec = self.declare_parameter(
             "greif_duration_sec", 5.0
-        )
+        ).value
 
         
         self.obj_buffer = deque()
@@ -21,12 +21,12 @@ class DelayBufferNode(Node):
     
         self.active_obj = None
 
-        self.subscription = self.create_subscription(
-            PredictedPosdelay,
-            "/predicted_positiondelay",
-            self.callback,
-            10,
-        )
+        self.create_subscription(
+        PredictedPosdelay,
+        "/predicted_positiondelay",
+        self.callback,
+        10,
+        )       
 
 
         self.publisher = self.create_publisher(

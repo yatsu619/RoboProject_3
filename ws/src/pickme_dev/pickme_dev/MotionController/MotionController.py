@@ -190,8 +190,8 @@ class MotionControllerNode(Node):
 
             match self.state:
                 case "IDLE":
-                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
+                    self.cmd.accel_x = self.controller_x.PDController(0, current_x, 1, 3, TIMEBASE)
+                    self.cmd.accel_y = self.controller_y.PDController(0, current_y, 1, 3, TIMEBASE)
                     self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
                     self.cmd.activate_gripper = False
 
@@ -207,7 +207,6 @@ class MotionControllerNode(Node):
                         self.state = "PLACE"
                         self.cmd.accel_z = -0.01
                         self.publisher_command.publish(self.cmd)
-                        time.sleep(0.5)
 
                 
                 case "PLACE":

@@ -1,9 +1,7 @@
 
 import rclpy
 from rclpy.node import Node
-from datetime import datetime, timedelta
 
-from builtin_interfaces.msg import Time
 from ro45_portalrobot_interfaces.msg import CamData, PredictedPosdelay
 from collections import deque
 
@@ -31,16 +29,14 @@ class WaypointPreditionNode(Node):
             '/predicted_positiondelay',
             10
         )
-         
+        self.timer = self.create_timer(0.2, self.timer_callback)
         self.x_buffer = deque(maxlen=5)
         self.y_buffer = deque(maxlen=5)
        
         
         self.last_msg= None
         self.last_msg_avg = None
-        self.lookahead_sec = None  # die zeit wo wir die kordinaten von dem objekt in der zukunft berechnen 
-        self.null_point= 0.0
-        
+        self.lookahead_sec = None  # die zeit wo wir die kordinaten von dem objekt in der zukunft berechnen      
         self.z = 0.0  # das förderband ist laut kordinaten ursprung layer null in der z achse 
         self.get_logger().info('WaypointPredictionNode gestartet.')
 
@@ -49,7 +45,7 @@ class WaypointPreditionNode(Node):
             self.last_msg_avg = self.moving_average(msg.x,msg.y)
             self.last_msg=msg
             return
-
+    def timer_callback(self):
         dt = self.time_diff_sec(self.last_msg.timestamp, msg.timestamp)
         if dt <= 0.0:
             self.get_logger().warn('Ungültiger Zeitunterschied.')
@@ -59,14 +55,10 @@ class WaypointPreditionNode(Node):
         vx = (avg_x - self.last_msg_avg[0]) / dt
         vy = (avg_y - self.last_msg_avg[1]) / dt
 
-        self.lookahead_sec= abs(self.null_point-msg.x)/vx 
-        #self.lookahead_sec= abs(self.null_point-msg.y)/vy 
-        self.time_to_0= datetime.now() + timedelta(seconds=self.lookahead_sec)
+        
 
-        ts = self.time_to_0.timestamp()
-        obj_zero = Time()
-        obj_zero.sec = int(ts)
-        obj_zero.nanosec = int((ts - obj_zero.sec) * 1e9)
+        
+    
 
         pred_msg = PredictedPosdelay()
         
@@ -84,8 +76,9 @@ class WaypointPreditionNode(Node):
         self.last_msg_avg = (avg_x, avg_y)
 
     def time_diff_sec(self, t1, t2) -> float:
-        ''' funktion die den zeitunterschied von zwei zeitstempeln berechnet erster Teil sekunden zweiter Teil nanosekunden '''
-        return (t2.sec - t1.sec) # + (t2.nanosec - t1.nanosec) * 1e-9
+        ''' funktion die den zeitunterschied berechnet  '''
+        return (t2 - t1)
+    
     def moving_average(self, x, y):
         self.x_buffer.append(x)
         self.y_buffer.append(y)

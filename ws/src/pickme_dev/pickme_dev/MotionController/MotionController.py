@@ -26,16 +26,16 @@ WCS_OFFSET_TO_TCP_Z = -0.095
 
 # Sorting bins coordinates expressed as offset from WCS in [m]
 # Y-Values are slightly beyond negative endstops. This is not a bug and thus will not be fixed.
-SORTING_BIN_UNICORN_X = -0.095
+SORTING_BIN_UNICORN_X = -0.060
 SORTING_BIN_UNICORN_Y = -0.170
 
-SORTING_BIN_CAT_X = -0.180
+SORTING_BIN_CAT_X = -0.150
 SORTING_BIN_CAT_Y = -0.170
 
 # XY-Margins
-MARGIN_X = 0.010
-MARGIN_Y = 0.010
-MARGIN_Z = 0.010
+MARGIN_X = 0.005
+MARGIN_Y = 0.005
+MARGIN_Z = 0.005
 
 # Pickheight conveyor
 HEIGHT_ABOVE_CONVEYOR = -0.05
@@ -140,6 +140,10 @@ class MotionControllerNode(Node):
                 self.predicted_obj_pos_y = msg.y
                 self.obj_id = msg.obj_id
                 self.state = "PICK"
+                if (msg.obj_id == 1):
+                    self.detected_type = "UNICORN"
+                elif (msg.obj_id == 2):
+                    self.detected_type = "CAT"
 
                 # Debug for terminal
                 print("\n---- Current Robot Position ----")
@@ -199,14 +203,12 @@ class MotionControllerNode(Node):
                     self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
                     self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
-                    self.cmd.activate_gripper = False
+                    self.cmd.activate_gripper = True
 
                     if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
                         self.new_object_lock = True
-                        print("Picked something up. Next state: Place")
-                        self.state = "PLACE"
-                        self.cmd.accel_z = -0.01
-                        self.publisher_command.publish(self.cmd)
+                        print("Picked something up. Next state: AFTERPICK")
+                        self.state = "AFTERPICK"
 
                 
                 case "PLACE":
@@ -217,8 +219,12 @@ class MotionControllerNode(Node):
                             self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
                             self.cmd.activate_gripper = True
 
-                            if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_Z) and (self.delta_y == 0):
+                            if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_X) and (self.delta_y == 0):
                                 print("Pick and Placed CAT")
+                                print("Binpos: ", SORTING_BIN_CAT_X)
+                                print("current: ", current_x)
+                                print("error: ", abs(SORTING_BIN_CAT_X - current_x))
+                                print("Margin: ", MARGIN_X)
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
                                 self.new_object_lock = False
@@ -235,14 +241,14 @@ class MotionControllerNode(Node):
                                 self.state = "IDLE"
 
 
-                case "APPROACH":
-                    # Robot approaches a point expressed in WCS form (just X and Y, as Z=0 is the conveyor belt itself)  -  DEBUG only!
-                    self.cmd.accel_x = self.controller_x.PDController(current_z, current_x, 1, 3, TIMEBASE)
+                case "AFTERPICK":
+                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
                     self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
                     self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
-                    self.cmd.activate_gripper = False
 
-                    print("Accel x | y | z:", self.cmd.accel_x, " ", self.cmd.accel_y, " ", self.cmd.accel_z)
+                    if (abs(HEIGHT_ABOVE_CONVEYOR - current_z) < MARGIN_Z):
+                        print("AFTERPICK DONE")
+                        self.state = "PLACE"
 
             self.publisher_command.publish(self.cmd)
 

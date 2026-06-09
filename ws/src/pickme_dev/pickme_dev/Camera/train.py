@@ -43,8 +43,8 @@ def get_features(image_path):
     hu_raw = cv2.HuMoments(moments).flatten()
     hu_log = -np.sign(hu_raw) * np.log10(np.abs(hu_raw) + 1e-10)
 
-    hu_0 = hu_log[0]
-    hu_3 = hu_log[3]
+    #hu_0 = hu_log[0]
+    #hu_3 = hu_log[3]
 
     return hu_log.tolist()
 

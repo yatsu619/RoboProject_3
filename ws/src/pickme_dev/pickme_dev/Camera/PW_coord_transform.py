@@ -6,8 +6,8 @@ import numpy as np
 MARKER_WORLD_COORDS = {
     67:  (0.000,  0.0620),
     69:  (0.000, -0.0620),
-    187: (-0.200,  0.0620),
-    420: (-0.200, -0.0620),
+    187: (0.200,  0.0620),
+    420: (0.200, -0.0620),
 }
 
 def calibrate(corners, ids):
@@ -18,6 +18,12 @@ def calibrate(corners, ids):
             pixel_pts.append([corners[i][0][:, 0].mean(), corners[i][0][:, 1].mean()])
             world_pts.append(MARKER_WORLD_COORDS[marker_id])
     H, _ = cv2.findHomography(np.array(pixel_pts, dtype=np.float32), np.array(world_pts, dtype=np.float32))
+    print(f'Pixel-Punkte: {pixel_pts}')
+    print(f'Welt-Punkte: {world_pts}')
+    print(f'H Matrix: {H}')
+    for i in range(len(pixel_pts)):
+        wx, wy = pixel_to_world(pixel_pts[i][0], pixel_pts[i][1], H)
+        print(f'Pixel {pixel_pts[i]} → Welt berechnet: ({wx:.4f}, {wy:.4f}) | Welt erwartet: {world_pts[i]}')
     return H
 
 def pixel_to_world(px, py, H):

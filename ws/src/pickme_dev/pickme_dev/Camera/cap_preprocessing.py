@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import time
 from pickme_dev.Camera.PW_coord_transform import calibrate, pixel_to_world
+#from PW_coord_transform import calibrate, pixel_to_world
 
 # Zeitstempel muss dann auch im topic verschickt werden
 
@@ -76,6 +77,7 @@ def process_frame(frame, ROI_X_MIN, ROI_X_MAX, ROI_Y_MIN, ROI_Y_MAX, H):
         center_y = y + h // 2
         full_x = center_x + ROI_X_MIN
         full_y = center_y + ROI_Y_MIN
+        print(f'Pixel: full_x={full_x}, full_y={full_y}')
         world_x, world_y = pixel_to_world(full_x, full_y, H)
         timestamp = time.time()
         return world_x, world_y, timestamp, x, y, w, h, center_x, center_y, roi_binary
@@ -84,7 +86,7 @@ def process_frame(frame, ROI_X_MIN, ROI_X_MAX, ROI_Y_MIN, ROI_Y_MAX, H):
 
 #nur wenn ich diese Datei direkt starte
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(2)
+    cap = cv2.VideoCapture(3)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 

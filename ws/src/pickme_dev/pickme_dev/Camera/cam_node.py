@@ -13,7 +13,7 @@ class CamNode(Node):
         super().__init__('cam_node')
         self.publisher = self.create_publisher(CamData, '/CamData', 10)
 
-        self.cap = cv2.VideoCapture(2)
+        self.cap = cv2.VideoCapture(3)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 

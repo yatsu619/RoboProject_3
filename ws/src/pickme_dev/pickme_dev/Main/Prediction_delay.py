@@ -26,8 +26,9 @@ class DelayBufferNode(Node):
         self.create_subscription(
         PredictedPosdelay,
         "/predicted_positiondelay",
+        self.pos_callback,
         10,
-        callback=self.pos_callback
+        
         
         ) 
 
@@ -35,8 +36,9 @@ class DelayBufferNode(Node):
         self.create_subscription(
         RobotCmd,
         '/robot_command',
+        self.gripper_callback,
         10,
-        callback=self.gripper_callback
+        
         
         )
 

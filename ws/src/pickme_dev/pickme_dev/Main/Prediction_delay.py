@@ -71,13 +71,13 @@ class DelayBufferNode(Node):
         }
 
        
-        if self.last_x==None or abs(obj.x-self.last_x)>=2.5:
+        if self.last_x is None or abs(obj["x"] - self.last_x) >= 0.025 :
             self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
             self.get_logger().info(
                 f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "
                 f"Pufferlänge={len(self.obj_buffer)}"
                 )
-            self.last_x=obj.x 
+            self.last_x = obj["x"]
     
 
     def gripper_callback(self,msg:RobotCmd) :
@@ -139,7 +139,7 @@ class DelayBufferNode(Node):
         pred_msg.x = greifpunkt_x
         pred_msg.y = y
         pred_msg.z = z
-        pred_msg.obj_id = obj_id
+        pred_msg.obj_id = float(obj_id)
 
         self.publisher.publish(pred_msg)
         

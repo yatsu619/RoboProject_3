@@ -49,16 +49,37 @@ class WaypointPreditionNode(Node):
 
     
     def timer_callback(self):
+        self.get_logger().info(
+        f'Buffergrößen: x={len(self.x_buffer)}, '
+        f'y={len(self.y_buffer)}, '
+        f't={len(self.time_buffer)}')
+         
         if len(self.x_buffer) > 0 and self.last_msg==None :
-            self.last_msg=self.moving_average
-            self.x_buffer=None
-            self.y_buffer=None
-            self.time_buffer=None
+            self.last_msg=self.moving_average()
+            self.get_logger().info(
+                        f'last_msg gespeichert: '
+                        f'x={self.last_msg[0]:.4f}, '
+                        f'y={self.last_msg[1]:.4f}, '
+                        f't={self.last_msg[2]:.4f}'
+                    )
 
-        if self.last_msg!= None :
-            self.aktuelle_Werte_msg =self.moving_average
-            dt=self.time_diff_sec(self.aktuelle_Werte_msg[3],self.last_msg[3])
-            vx=self.berechnung_Geschwindigkeit(self.aktuelle_Werte_msg[1],self.last_msg[1],dt )
+            self.x_buffer.clear
+            self.y_buffer.clear
+            self.time_buffer.clear
+
+        if self.last_msg!= None and len(self.x_buffer) > 0:
+            self.aktuelle_Werte_msg =self.moving_average()
+            self.get_logger().info(
+        f'aktuelle Werte: '
+        f'x={self.aktuelle_Werte_msg[0]:.4f}, '
+        f'y={self.aktuelle_Werte_msg[1]:.4f}, '
+        f't={self.aktuelle_Werte_msg[2]:.4f}'
+    )
+
+            dt=self.time_diff_sec(self.aktuelle_Werte_msg[2],self.last_msg[2])
+            if dt <= 0:
+                return
+            vx=self.berechnung_Geschwindigkeit(self.aktuelle_Werte_msg[0],self.last_msg[0],dt )
         else :
             return
 
@@ -66,13 +87,13 @@ class WaypointPreditionNode(Node):
         pred_msg = PredictedPosdelay()
         
         pred_msg.vx = vx
-        pred_msg.y = self.aktuelle_Werte_msg[2]
+        pred_msg.y = self.aktuelle_Werte_msg[1]
         pred_msg.z = self.Föderband_layer 
-        pred_msg.x= self.aktuelle_Werte_msg[1]
+        pred_msg.x= self.aktuelle_Werte_msg[0]
         pred_msg.obj_id = self.obj_id
 
         self.publisher_prediction.publish(pred_msg)
-
+        self.get_logger().info('Prediction publiziert')
         
 
         self.last_msg =None

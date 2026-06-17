@@ -4,8 +4,8 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 import threading
 import time
-from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, ExtDebug, PredictedPos
-from .MotionControllerLogic import MotionControllerLogic, Controller
+from ro45_portalrobot_interfaces.msg import RobotCmd, RobotPos, PredictedPos
+from .MotionControllerLogic import Controller
 from rclpy.duration import Duration
 
 from std_msgs.msg import Bool
@@ -40,7 +40,11 @@ MARGIN_Z = 0.005
 # Pickheight conveyor
 HEIGHT_ABOVE_CONVEYOR = -0.05
 PICKHEIGHT_ABOVE_CONVEYOR = -0.005
+IDLE_POS = 0
 
+# IDs
+UNICORN = 1
+CAT = 2
 
 class MotionControllerNode(Node):
     def __init__(self):
@@ -107,10 +111,10 @@ class MotionControllerNode(Node):
         self.external_debug_lock = threading.Lock()
 
         # PD-Controller and logic instance(s)
-        self.controller_logic = MotionControllerLogic()
-        self.controller_x = Controller()
-        self.controller_y = Controller()
-        self.controller_z = Controller()
+        self.controller_logic = Controller()
+        self.controller_x = Controller(1, 3, TIMEBASE)
+        self.controller_y = Controller(1, 3, TIMEBASE)
+        self.controller_z = Controller(1, 3, TIMEBASE)
 
         # Should be self explanatory
         self.state = "IDLE" # Possible states: "IDLE", "PICK", "PLACE", "APPROACH" (APPROACH is just for debugging (so the z-axis doesn't move))
@@ -140,9 +144,9 @@ class MotionControllerNode(Node):
                 self.predicted_obj_pos_y = msg.y
                 self.obj_id = msg.obj_id
                 self.state = "PICK"
-                if (msg.obj_id == 1):
+                if (msg.obj_id == UNICORN):
                     self.detected_type = "UNICORN"
-                elif (msg.obj_id == 2):
+                elif (msg.obj_id == CAT):
                     self.detected_type = "CAT"
 
                 # Debug for terminal
@@ -194,15 +198,16 @@ class MotionControllerNode(Node):
 
             match self.state:
                 case "IDLE":
-                    self.cmd.accel_x = self.controller_x.PDController(0, current_x, 1, 3, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(0, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_x = self.controller_x.PDController(IDLE_POS, current_x)
+                    self.cmd.accel_y = self.controller_y.PDController(IDLE_POS, current_y)
+                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
                     self.cmd.activate_gripper = False
 
+
                 case "PICK":
-                    self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x, 1, 3, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
+                    self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x)
+                    self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y)
+                    self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z)
                     self.cmd.activate_gripper = True
 
                     if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
@@ -210,45 +215,42 @@ class MotionControllerNode(Node):
                         print("Picked something up. Next state: AFTERPICK")
                         self.state = "AFTERPICK"
 
+
+                case "AFTERPICK":
+                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x)
+                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y)
+                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
+                    self.cmd.activate_gripper = True
+
+                    if (abs(HEIGHT_ABOVE_CONVEYOR - current_z) < MARGIN_Z):
+                        print("AFTERPICK DONE")
+                        self.state = "PLACE"
                 
+
                 case "PLACE":
                     match self.detected_type:
                         case "CAT":
-                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_CAT_X, current_x, 1, 3, TIMEBASE)
-                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_CAT_Y, current_y, 1, 3, TIMEBASE)
-                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
+                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_CAT_X, current_x)
+                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_CAT_Y, current_y)
+                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
                             self.cmd.activate_gripper = True
 
                             if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_X) and (self.delta_y == 0):
-                                print("Pick and Placed CAT")
-                                print("Binpos: ", SORTING_BIN_CAT_X)
-                                print("current: ", current_x)
-                                print("error: ", abs(SORTING_BIN_CAT_X - current_x))
-                                print("Margin: ", MARGIN_X)
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
                                 self.new_object_lock = False
 
                         case "UNICORN":
-                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x, 1, 3, TIMEBASE)
-                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_UNICORN_Y, current_y, 1, 3, TIMEBASE)
-                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
+                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x)
+                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_UNICORN_Y, current_y)
+                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
                             self.cmd.activate_gripper = True
 
-                            if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_Z) and (self.delta_y == 0):
+                            if (abs(SORTING_BIN_UNICORN_X - current_x) < MARGIN_Z) and (self.delta_y == 0):
                                 print("Pick and Placed UNICORN")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
-
-
-                case "AFTERPICK":
-                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x, 1, 3, TIMEBASE)
-                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y, 1, 3, TIMEBASE)
-                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z, 1, 3, TIMEBASE)
-
-                    if (abs(HEIGHT_ABOVE_CONVEYOR - current_z) < MARGIN_Z):
-                        print("AFTERPICK DONE")
-                        self.state = "PLACE"
+                                self.new_object_lock = False
 
             self.publisher_command.publish(self.cmd)
 
@@ -257,15 +259,16 @@ class MotionControllerNode(Node):
         """Logic that drives all axis to their homing position
         (positive Endstops)"""
 
-        self.AccelerateAxis("X", self.controller_logic.accel_avg)
-        self.AccelerateAxis("Y", self.controller_logic.accel_avg)
-        self.AccelerateAxis("Z", -(self.controller_logic.accel_avg))
+        self.AccelerateAxis("X", self.controller_logic.accel)
+        self.AccelerateAxis("Y", self.controller_logic.accel)
+        self.AccelerateAxis("Z", -(self.controller_logic.accel))
         self.publisher_command.publish(self.cmd)
         time.sleep(1)
         self.AccelerateAxis("X", 0.0)
         self.AccelerateAxis("Y", 0.0)
         self.AccelerateAxis("Z", 0.0)
         self.publisher_command.publish(self.cmd)
+
 
     def AccelerateAxis(self, axis: str, accel: int) -> None:
         """Sets the values of the ROS2 message interface 'RobotCmd'.

@@ -17,12 +17,12 @@ class DelayBufferNode(Node):
 
         
         self.obj_buffer = deque()
-        self.last_x_per_objtype={}
         self.active_obj= None
-        self.is_gripping=False 
+        self.obj_geholt=False
         self.activ_gripper=False
         self.last_x=None
-        self.min_abstand_obj= 0.025
+        self.min_abstand_obj= 0.05
+        
 
         self.create_subscription(
         PredictedPosdelay,
@@ -60,7 +60,7 @@ class DelayBufferNode(Node):
         """
         Empfange PredictedPosdelay und puffere Objekte.
         """
-       
+        
 
         obj = {
             "vx": msg.vx,
@@ -70,56 +70,55 @@ class DelayBufferNode(Node):
             "obj_id": msg.obj_id,
             "zeitpunkt_logging": time.time(), 
         }
-        obj_id=obj["obj_id"]
-        x=obj["x"]
-        last_x=self.last_x_perobjtype.get(obj_id,None)
-
-        if self.last_x is None or abs(x - last_x) >= self.min_abstand_obj :
+        
+       
+        if self.last_x is None or obj["x"] >self.self.last_x:
             self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
             self.get_logger().info(
                 f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "
                 f"Pufferlänge={len(self.obj_buffer)}"
                 )
-        self.last_x_per_objtype[obj_id]=x
+            self.last_x = obj["x"]
     
 
     def gripper_callback(self,msg:RobotCmd) :
-        new_gripper_state=msg.activate_gripper
-        if new_gripper_state and not self.is_gripping:
-                self.is_gripping = True
-                self.activ_gripper = True
-        if not new_gripper_state:
-            self.is_gripping = False
-            self.activ_gripper = False
-            self.active_obj = None
+        self.activ_gripper=msg.activate_gripper
+
+
 
     def timer_callback(self):
        
-        if self.is_gripping == True and not self.is_gripping:
+        if self.activ_gripper == True and self.obj_geholt == False :
             if len(self.obj_buffer) > 0:
                 self.active_obj = self.obj_buffer.popleft()
-                self.is_gripping= True
+                self.obj_geholt= True
                 self.get_logger().info(
                     f"Nach Greifprozess: neues Objekt aus Puffer aktiviert "
                     f"(obj_id={self.active_obj['obj_id']})"
                 )
-            return
-            if not self.activ_gripper:
                 return
-            if self.active_obj is None:
-                if len(self.obj_buffer)>0 :
-                    self.active_obj = self.obj_buffer.popleft()
-                    self.is_gripping = True    
-                else:
-                    return
-            if  len(self.obj_buffer) <=0:
+            
+            elif len(self.obj_buffer) <=0:
                 self.active_obj= None
                 self.get_logger().info(
                     f"Nach Greifprozess: kein objekt im puffer "
                 )
             return
         
-        if self.active_obj is None:
+        if self.activ_gripper== False and self.obj_geholt== True:
+            self.obj_geholt= False
+
+
+
+        if self.active_obj== None and len(self.obj_buffer)>0: 
+            self.active_obj = self.obj_buffer.popleft()
+            self.get_logger().info(
+                    f"inizial : erstes Objekt aus Puffer aktiviert "
+            )
+        elif self.active_obj== None and len(self.obj_buffer)<=0:
+            self.get_logger().info(
+                    f"leer: kein objet vorhanden  "
+            )
             return
         
         x_zum_Startzeitpunkt= self.active_obj["x"]
@@ -134,18 +133,16 @@ class DelayBufferNode(Node):
        
 
         # Innerhalb des Greifprozesses -> Position berechnen und publizieren
-        if self.is_gripping: 
-            dt = abs(time_now-time_logged)
-            greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
-        
+        dt = abs(time_now-time_logged)
+        greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
 
-            pred_msg = PredictedPos()
-            pred_msg.x = greifpunkt_x
-            pred_msg.y = y
-            pred_msg.z = z
-            pred_msg.obj_id = float(obj_id)
+        pred_msg = PredictedPos()
+        pred_msg.x = greifpunkt_x
+        pred_msg.y = y
+        pred_msg.z = z
+        pred_msg.obj_id = float(obj_id)
 
-            self.publisher.publish(pred_msg)
+        self.publisher.publish(pred_msg)
         
 
 

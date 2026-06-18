@@ -77,7 +77,7 @@ class DelayBufferNode(Node):
                 f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "
                 f"Pufferlänge={len(self.obj_buffer)}"
                 )
-            self.last_x = obj["x"]
+        self.last_x = obj["x"]
     
 
     def gripper_callback(self,msg:RobotCmd) :
@@ -111,10 +111,12 @@ class DelayBufferNode(Node):
 
         if self.active_obj== None and len(self.obj_buffer)>0: 
             self.active_obj = self.obj_buffer.popleft()
+            self.obj_geholt= True
             self.get_logger().info(
                     f"inizial : erstes Objekt aus Puffer aktiviert "
             )
         elif self.active_obj== None and len(self.obj_buffer)<=0:
+            self.obj_geholt=False
             self.get_logger().info(
                     f"leer: kein objet vorhanden  "
             )
@@ -132,16 +134,18 @@ class DelayBufferNode(Node):
        
 
         # Innerhalb des Greifprozesses -> Position berechnen und publizieren
-        dt = abs(time_now-time_logged)
-        greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
+        if self.obj_geholt ==True :
+            dt = abs(time_now-time_logged)
+            greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
+        
 
-        pred_msg = PredictedPos()
-        pred_msg.x = greifpunkt_x
-        pred_msg.y = y
-        pred_msg.z = z
-        pred_msg.obj_id = float(obj_id)
+            pred_msg = PredictedPos()
+            pred_msg.x = greifpunkt_x
+            pred_msg.y = y
+            pred_msg.z = z
+            pred_msg.obj_id = float(obj_id)
 
-        self.publisher.publish(pred_msg)
+            self.publisher.publish(pred_msg)
         
 
 

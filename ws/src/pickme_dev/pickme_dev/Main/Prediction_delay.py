@@ -98,7 +98,7 @@ class DelayBufferNode(Node):
                 )
                 return
             
-            elif len(self.obj_buffer) <=0:
+            if len(self.obj_buffer) <=0:
                 self.active_obj= None
                 self.get_logger().info(
                     f"Nach Greifprozess: kein objekt im puffer "
@@ -115,7 +115,7 @@ class DelayBufferNode(Node):
             self.get_logger().info(
                     f"inizial : erstes Objekt aus Puffer aktiviert "
             )
-        elif self.active_obj== None and len(self.obj_buffer)<=0:
+        if self.active_obj== None and len(self.obj_buffer)<=0:
             self.get_logger().info(
                     f"leer: kein objet vorhanden  "
             )

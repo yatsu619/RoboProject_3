@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 import time
 from ro45_portalrobot_interfaces.msg import CamData
+import random
 
 
 class CamNodeTest(Node):
@@ -15,7 +16,7 @@ class CamNodeTest(Node):
         self.start_x = -0.06      # erster negativer Wert in Meter
         self.speed = 0.01         # 1 cm/s = 0.01 m/s
         self.elapsed = 0.0
-        self.cycle_time = 6.0
+        self.cycle_time = 12.0
 
         self.get_logger().info('Cam_msg_test gestartet')
 
@@ -24,7 +25,7 @@ class CamNodeTest(Node):
         y = 0.0
 
         msg = CamData()
-        msg.obj_type = 1
+        msg.obj_type = random.randint(1,2)
         msg.x = float(x)
         msg.y = float(y)
         msg.timestamp = float(time.time())

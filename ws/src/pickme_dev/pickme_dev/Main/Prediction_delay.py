@@ -21,7 +21,7 @@ class DelayBufferNode(Node):
         self.obj_geholt=False
         self.activ_gripper=False
         self.last_x=None
-
+        self.min_abstand_obj= 0.025
 
         self.create_subscription(
         PredictedPosdelay,
@@ -71,7 +71,7 @@ class DelayBufferNode(Node):
         }
 
        
-        if self.last_x is None or abs(obj["x"] - self.last_x) >= 0.025 :
+        if self.last_x is None or abs(obj["x"] - self.last_x) >= self.min_abstand_obj :
             self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
             self.get_logger().info(
                 f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "

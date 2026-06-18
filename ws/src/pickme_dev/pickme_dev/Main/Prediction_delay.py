@@ -119,7 +119,8 @@ class DelayBufferNode(Node):
                 )
             return
         
-        
+        if self.active_obj is None:
+            return
         
         x_zum_Startzeitpunkt= self.active_obj["x"]
         vx = self.active_obj["vx"]

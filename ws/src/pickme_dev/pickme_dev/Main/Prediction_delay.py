@@ -133,7 +133,7 @@ class DelayBufferNode(Node):
        
 
         # Innerhalb des Greifprozesses -> Position berechnen und publizieren
-        if self.is_gripping
+        if self.is_gripping: 
             dt = abs(time_now-time_logged)
             greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
         

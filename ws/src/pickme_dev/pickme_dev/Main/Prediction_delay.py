@@ -72,7 +72,7 @@ class DelayBufferNode(Node):
         }
         
        
-        if self.last_x is None or obj["x"] >self.self.last_x:
+        if self.last_x is None or obj["x"] >self.last_x:
             self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
             self.get_logger().info(
                 f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "

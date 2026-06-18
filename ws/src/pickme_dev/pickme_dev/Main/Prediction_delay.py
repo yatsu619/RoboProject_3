@@ -21,7 +21,8 @@ class DelayBufferNode(Node):
         self.obj_geholt=False
         self.activ_gripper=False
         self.last_x=None
-        self.min_abstand_obj= 0.05
+        self.min_abstand_obj= 0
+        
         
 
         self.create_subscription(
@@ -135,14 +136,18 @@ class DelayBufferNode(Node):
         # Innerhalb des Greifprozesses -> Position berechnen und publizieren
         dt = abs(time_now-time_logged)
         greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
-
-        pred_msg = PredictedPos()
-        pred_msg.x = greifpunkt_x
-        pred_msg.y = y
-        pred_msg.z = z
-        pred_msg.obj_id = float(obj_id)
-
-        self.publisher.publish(pred_msg)
+        if greifpunkt_x< self.min_abstand_obj:
+            pred_msg = PredictedPos()
+            pred_msg.x = greifpunkt_x
+            pred_msg.y = y
+            pred_msg.z = z
+            pred_msg.obj_id = float(obj_id)
+            self.get_logger().info(
+        f"Greifpunkt publiziert (obj_id={obj_id}), "
+        f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
+        f"dt={dt:.3f} s"
+    )
+            self.publisher.publish(pred_msg)
         
 
 

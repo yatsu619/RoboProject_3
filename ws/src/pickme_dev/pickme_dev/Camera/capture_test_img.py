@@ -4,8 +4,8 @@ import os
 
 
 # Ordner zum Speichern (anpassen je nach Objekt: Cat oder MagicUnicorn)
-SAVE_FOLDER = '/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images3/Einhorn'
-CAMERA_INDEX = 3
+SAVE_FOLDER = '/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images4/Quadrat'
+CAMERA_INDEX = 2
 
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 

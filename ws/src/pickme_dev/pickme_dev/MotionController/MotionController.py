@@ -39,8 +39,9 @@ MARGIN_Z = 0.005
 
 # Pickheight conveyor
 HEIGHT_ABOVE_CONVEYOR = -0.05
-PICKHEIGHT_ABOVE_CONVEYOR = -0.005
-IDLE_POS = 0
+PICKHEIGHT_ABOVE_CONVEYOR = -0.0015
+IDLE_POS_X = 0
+IDLE_POS_Y = 0
 
 # IDs
 UNICORN = 1
@@ -198,17 +199,16 @@ class MotionControllerNode(Node):
 
             match self.state:
                 case "IDLE":
-                    self.cmd.accel_x = self.controller_x.PDController(IDLE_POS, current_x)
-                    self.cmd.accel_y = self.controller_y.PDController(IDLE_POS, current_y)
-                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
-                    self.cmd.activate_gripper = False
+                    self.IDLE(target_pos_x=IDLE_POS_X, target_pos_y=IDLE_POS_Y, target_pos_z=HEIGHT_ABOVE_CONVEYOR, current_pos=[current_x, current_y, current_z])
 
 
                 case "PICK":
-                    self.cmd.accel_x = self.controller_x.PDController(self.predicted_obj_pos_x, current_x)
-                    self.cmd.accel_y = self.controller_y.PDController(self.predicted_obj_pos_y, current_y)
-                    self.cmd.accel_z = self.controller_z.PDController(PICKHEIGHT_ABOVE_CONVEYOR, current_z)
-                    self.cmd.activate_gripper = True
+                    self.PICK(
+                        target_pos_x=self.predicted_obj_pos_x,
+                        target_pos_y=self.predicted_obj_pos_y,
+                        target_pos_z=PICKHEIGHT_ABOVE_CONVEYOR,
+                        current_pos=[current_x, current_y, current_z]
+                        )
 
                     if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
                         self.new_object_lock = True
@@ -217,10 +217,12 @@ class MotionControllerNode(Node):
 
 
                 case "AFTERPICK":
-                    self.cmd.accel_x = self.controller_x.PDController(current_x, current_x)
-                    self.cmd.accel_y = self.controller_y.PDController(current_y, current_y)
-                    self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
-                    self.cmd.activate_gripper = True
+                    self.AFTERPICK(
+                        target_pos_x=current_x,
+                        target_pos_y=current_y,
+                        target_pos_z=HEIGHT_ABOVE_CONVEYOR,
+                        current_pos=[current_x, current_y, current_z]
+                        )
 
                     if (abs(HEIGHT_ABOVE_CONVEYOR - current_z) < MARGIN_Z):
                         print("AFTERPICK DONE")
@@ -230,10 +232,12 @@ class MotionControllerNode(Node):
                 case "PLACE":
                     match self.detected_type:
                         case "CAT":
-                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_CAT_X, current_x)
-                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_CAT_Y, current_y)
-                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
-                            self.cmd.activate_gripper = True
+                            self.CAT(
+                                target_pos_x=SORTING_BIN_CAT_X,
+                                target_pos_y=SORTING_BIN_CAT_Y,
+                                target_pos_z=HEIGHT_ABOVE_CONVEYOR,
+                                current_pos=[current_x, current_y, current_z]
+                                )
 
                             if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_X) and (self.delta_y == 0):
                                 self.cmd.activate_gripper = False
@@ -241,10 +245,12 @@ class MotionControllerNode(Node):
                                 self.new_object_lock = False
 
                         case "UNICORN":
-                            self.cmd.accel_x = self.controller_x.PDController(SORTING_BIN_UNICORN_X, current_x)
-                            self.cmd.accel_y = self.controller_y.PDController(SORTING_BIN_UNICORN_Y, current_y)
-                            self.cmd.accel_z = self.controller_z.PDController(HEIGHT_ABOVE_CONVEYOR, current_z)
-                            self.cmd.activate_gripper = True
+                            self.UNICORN(
+                                target_pos_x=SORTING_BIN_UNICORN_X,
+                                target_pos_y=SORTING_BIN_UNICORN_Y,
+                                target_pos_z=HEIGHT_ABOVE_CONVEYOR,
+                                current_pos=[current_x, current_y, current_z]
+                                )
 
                             if (abs(SORTING_BIN_UNICORN_X - current_x) < MARGIN_Z) and (self.delta_y == 0):
                                 print("Pick and Placed UNICORN")
@@ -281,6 +287,37 @@ class MotionControllerNode(Node):
         elif axis == "Z":
             self.cmd.accel_z = accel
         self.cmd.activate_gripper = False
+
+    
+    def IDLE(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
+        self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
+        self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
+        self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
+        self.cmd.activate_gripper = False
+    
+    def PICK(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
+        self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
+        self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
+        self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
+        self.cmd.activate_gripper = True
+
+    def AFTERPICK(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
+        self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
+        self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
+        self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
+        self.cmd.activate_gripper = True
+
+    def CAT(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
+        self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
+        self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
+        self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
+        self.cmd.activate_gripper = True
+    
+    def UNICORN(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
+        self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
+        self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
+        self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
+        self.cmd.activate_gripper = True
 
 
 def main():

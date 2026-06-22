@@ -129,13 +129,21 @@ class DelayBufferNode(Node):
         obj_id = self.active_obj["obj_id"]
         time_logged= self.active_obj["zeitpunkt_logging"]
         time_now=time.time()
-
+        self.get_logger().info(
+        f"Greifpunkt publiziert (obj_id={obj_id}),  y={y:.3f} m,  "
+        f"vx={vx:.3f} "
+    )
         
        
 
         # Innerhalb des Greifprozesses -> Position berechnen und publizieren
         dt = abs(time_now-time_logged)
         greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
+        self.get_logger().info(
+        f"Greifpunkt publiziert (obj_id={obj_id}), "
+        f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
+        f"dt={dt:.3f} s"
+    )
         if greifpunkt_x< self.min_abstand_obj:
             pred_msg = PredictedPos()
             pred_msg.x = greifpunkt_x

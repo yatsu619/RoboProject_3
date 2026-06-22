@@ -130,7 +130,7 @@ class DelayBufferNode(Node):
         time_logged= self.active_obj["zeitpunkt_logging"]
         time_now=time.time()
         self.get_logger().info(
-        f"Greifpunkt publiziert (obj_id={obj_id}),  y={y:.3f} m,  "
+        f"obj (obj_id={obj_id}),  y={y:.3f} m,  "
         f"vx={vx:.3f} "
     )
         
@@ -140,7 +140,7 @@ class DelayBufferNode(Node):
         dt = abs(time_now-time_logged)
         greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
         self.get_logger().info(
-        f"Greifpunkt publiziert (obj_id={obj_id}), "
+        f"Greifpunkt  (obj_id={obj_id}), "
         f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
         f"dt={dt:.3f} s"
     )

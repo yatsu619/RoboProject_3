@@ -4,7 +4,6 @@ from rclpy.node import Node
 from ro45_portalrobot_interfaces.msg import CamData
 from pickme_dev.Camera.cap_preprocessing import setup, process_frame
 from pickme_dev.Camera.ml_detection import MLDetection
-#ros2 run pickme_dev cam_node
 
 class CamNode(Node):
     def __init__(self):
@@ -24,13 +23,18 @@ class CamNode(Node):
         ret, frame = self.cap.read()
         if not ret:
             return
-        world_x, world_y, timestamp = process_frame(frame, self.H)
-        if world_x is not None:
+        objekte = process_frame(frame, self.H)
+        labels = self.ml.classify(frame)
+
+        if len(objekte) != len(labels):
+            self.get_logger().error(f'Anzahl Objekte ({len(objekte)}) != Anzahl Labels ({len(labels)})')
+            return
+        
+        for i, (world_x, world_y, timestamp) in enumerate(objekte):
+            if i >= len(labels):
+                break
             msg = CamData()
-            label = self.ml.classify(frame)
-            if label is None:
-                return
-            msg.obj_type = label
+            msg.obj_type = labels[i]
             msg.x = world_x
             msg.y = world_y
             msg.timestamp = timestamp

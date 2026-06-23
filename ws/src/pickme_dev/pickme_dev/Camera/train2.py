@@ -4,8 +4,10 @@ import os
 import joblib
 from sklearn.tree import DecisionTreeClassifier
 
+#einfügen, wenn von der bahn 20x für einhorn id 1 ist und dann 1-2x id 2 zeigt dann trotzdem id 1 ausgeben
+
 IMAGE_DIR = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images4"
-MODEL_PATH = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/model2.pkl"
+MODEL_PATH = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/model3.pkl"
 
 CLASSES = {
     "Katze":   2,
@@ -42,11 +44,11 @@ def get_features(image_path):
 
     hu_raw = cv2.HuMoments(moments).flatten()
     hu_log = -np.sign(hu_raw) * np.log10(np.abs(hu_raw) + 1e-10)
-
     return [hu_log[0], hu_log[3]]
 
-X = []      #Matrix
-y = []      #Vektor
+
+X = []
+y = []      
 
 for folder_name, label in CLASSES.items():
     folder_path = os.path.join(IMAGE_DIR, folder_name)

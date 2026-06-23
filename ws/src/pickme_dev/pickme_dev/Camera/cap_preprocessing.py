@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import time
-from pickme_dev.Camera.PW_coord_transform import calibrate, pixel_to_world
+from PW_coord_transform import calibrate, pixel_to_world
 
 TRAPEZ = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
@@ -19,6 +19,19 @@ def setup(cap):
         if ids is not None and all(m in ids.flatten() for m in [67, 69, 187, 420]):
             break
         print('Warte auf alle 4 Marker...')
+    for i, marker_id in enumerate(ids.flatten()):
+        if marker_id == 67:
+            punkt_67 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+        if marker_id == 69:
+            punkt_69 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+        if marker_id == 187:
+            punkt_187 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+        if marker_id == 420:
+            punkt_420 = (int(corners[i][0][:, 0].mean()), int(corners[i][0][:, 1].mean()))
+    print(f'Marker 67: {punkt_67}')
+    print(f'Marker 69: {punkt_69}')
+    print(f'Marker 187: {punkt_187}')
+    print(f'Marker 420: {punkt_420}')
     H = calibrate(corners, ids)
     print('Kalibrierung erfolgreich!')
     return H
@@ -33,29 +46,31 @@ def process_frame(frame, H):
     cv2.fillPoly(maske, [TRAPEZ], 255)
     roi_binary = cv2.bitwise_and(binary, binary, mask=maske)
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(roi_binary)
-    biggest_label = -1
-    biggest_area = 0
+
+    object_coord = []
     for i in range(1, num_labels):
-        area   = stats[i, cv2.CC_STAT_AREA]
+        area  = stats[i, cv2.CC_STAT_AREA]
         w_comp = stats[i, cv2.CC_STAT_WIDTH]
         h_comp = stats[i, cv2.CC_STAT_HEIGHT]
-        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 150 and h_comp < 500 and area > biggest_area:
-            biggest_area = area
-            biggest_label = i
-    if biggest_label != -1:
-        x = stats[biggest_label, cv2.CC_STAT_LEFT]
-        y = stats[biggest_label, cv2.CC_STAT_TOP]
-        w = stats[biggest_label, cv2.CC_STAT_WIDTH]
-        h = stats[biggest_label, cv2.CC_STAT_HEIGHT]
-        center_x = x + w // 2
-        center_y = y + h // 2
-        world_x, world_y = pixel_to_world(center_x, center_y, H)
-        timestamp = time.time()
-        return world_x, world_y, timestamp
-    return None, None, None
+        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 150 and h_comp < 500:
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            if x < 288 or x + w > 1470:
+                continue
+            center_x = x + w // 2
+            center_y = y + h // 2
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
+            world_x, world_y = pixel_to_world(center_x, center_y, H)
+            object_coord.append((world_x, world_y, time.time()))
+
+    object_coord.sort(key=lambda o: o[0], reverse=True)
+    return object_coord
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(2)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     for _ in range(10):
@@ -65,8 +80,8 @@ if __name__ == '__main__':
         ret, frame = cap.read()
         if not ret:
             continue
-        world_x, world_y, timestamp = process_frame(frame, H)
-        if world_x is not None:
+        object_coord = process_frame(frame, H)
+        for world_x, world_y, timestamp in object_coord:
             print(f'Weltkoordinaten: ({world_x:.4f}m, {world_y:.4f}m) | Timestamp: {timestamp:.3f}')
         cv2.polylines(frame, [TRAPEZ], isClosed=True, color=(255, 0, 0), thickness=2)
         cv2.imshow('Bild', frame)

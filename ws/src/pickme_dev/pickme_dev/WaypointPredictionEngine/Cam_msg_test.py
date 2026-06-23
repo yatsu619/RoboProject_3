@@ -13,10 +13,10 @@ class CamNodeTest(Node):
         self.timer_period = 0.1  # 10 Hz
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
-        self.start_x = -0.06      # erster negativer Wert in Meter
-        self.speed = 0.01         # 1 cm/s = 0.01 m/s
+        self.start_x = 0.10      # erster negativer Wert in Meter
+        self.speed = -0.01         # 1 cm/s = 0.01 m/s
         self.elapsed = 0.0
-        self.cycle_time = 12.0
+        self.cycle_time = 6.0
 
         self.get_logger().info('Cam_msg_test gestartet')
 

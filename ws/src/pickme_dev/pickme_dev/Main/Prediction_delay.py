@@ -11,27 +11,13 @@ from ro45_portalrobot_interfaces.msg import PredictedPos, PredictedPosdelay, Rob
 class DelayBufferNode(Node):
     def __init__(self):
         super().__init__("delay_buffer_node")
-
-        
        
-
-        
-        self.obj_buffer = deque()
-        self.active_obj= None
-        self.obj_geholt=False
-        self.activ_gripper=False
-        self.last_x=None
-        self.min_abstand_obj= 0
-        
-        
-
+       
         self.create_subscription(
         PredictedPosdelay,
         "/predicted_positiondelay",
         self.pos_callback,
         10,
-        
-        
         ) 
 
 
@@ -40,9 +26,8 @@ class DelayBufferNode(Node):
         '/robot_command',
         self.gripper_callback,
         10,
-        
-        
         )
+
 
         self.publisher = self.create_publisher(
             PredictedPos,
@@ -54,8 +39,23 @@ class DelayBufferNode(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
 
         self.get_logger().info(
-            f"DelayBufferNode gestartet "
-        )
+            f"DelayBufferNode gestartet ")
+        
+
+        self.obj_buffer = deque()
+
+        self.active_obj= None
+        self.obj_geholt=False
+        self.activ_gripper=False
+        self.obj_done=False
+        
+        self.closest_grip_location= 0
+        
+
+
+
+
+
 
     def pos_callback(self, msg: PredictedPosdelay):
         """
@@ -73,17 +73,18 @@ class DelayBufferNode(Node):
         }
         
        
-        if self.last_x is None or obj["x"] >self.last_x:
-            self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
-            self.get_logger().info(
-                f"Neues Objekt gepuffert (obj_id={obj['obj_id']}), "
+        
+        self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
+        self.get_logger().info(
+                f"obj gefuffert  | vx = {obj['vx']:.4f}| y = {obj['y']:.4f} | Aktuelles_X = {obj['x']:.4f} | logging_time = {obj['zeitpunkt_logging']}"
                 f"Pufferlänge={len(self.obj_buffer)}"
                 )
-            self.last_x = obj["x"]
-    
+        
 
     def gripper_callback(self,msg:RobotCmd) :
         self.activ_gripper=msg.activate_gripper
+        self.get_logger().info(
+                    f"Greifer Status = {self.activ_gripper} ")
 
 
 
@@ -92,15 +93,17 @@ class DelayBufferNode(Node):
         if self.activ_gripper == True and self.obj_geholt == False :
             if len(self.obj_buffer) > 0:
                 self.active_obj = self.obj_buffer.popleft()
+                self.obj_done=False
                 self.obj_geholt= True
                 self.get_logger().info(
                     f"Nach Greifprozess: neues Objekt aus Puffer aktiviert "
-                    f"(obj_id={self.active_obj['obj_id']})"
+                    f"obj| vx = {self.active_obj['vx']:.4f}| y = {self.active_obj['y']:.4f} | Aktuelles_X = {self.active_obj['x']:.4f} | logging_time = {self.active_obj['zeitpunkt_logging']}"
                 )
                 return
             
             if len(self.obj_buffer) <=0:
                 self.active_obj= None
+                self.obj_done= True
                 self.get_logger().info(
                     f"Nach Greifprozess: kein objekt im puffer "
                 )
@@ -113,10 +116,13 @@ class DelayBufferNode(Node):
 
         if self.active_obj== None and len(self.obj_buffer)>0: 
             self.active_obj = self.obj_buffer.popleft()
+            self.obj_done=False
             self.get_logger().info(
                     f"inizial : erstes Objekt aus Puffer aktiviert "
+                    f"obj| vx = {self.active_obj['vx']:.4f}| y = {self.active_obj['y']:.4f} | Aktuelles_X = {self.active_obj['x']:.4f} | logging_time = {self.active_obj['zeitpunkt_logging']}"
             )
         if self.active_obj== None and len(self.obj_buffer)<=0:
+            self.obj_done=True
             self.get_logger().info(
                     f"leer: kein objet vorhanden  "
             )
@@ -144,7 +150,7 @@ class DelayBufferNode(Node):
         f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
         f"dt={dt:.3f} s"
     )
-        if greifpunkt_x< self.min_abstand_obj:
+        if greifpunkt_x< self.closest_grip_location and self.obj_done is False:
             pred_msg = PredictedPos()
             pred_msg.x = greifpunkt_x
             pred_msg.y = y

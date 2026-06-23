@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from ro45_portalrobot_interfaces.msg import CamData, PredictedPosdelay
-from collections import deque
+import statistics
 
 
 
@@ -15,7 +15,7 @@ from collections import deque
 class WaypointPreditionNode(Node):
     def __init__(self):
         super().__init__('WaypointPredition_node')
-        
+        self.get_logger().info('WaypointPredictionNode gestartet.')
 
         self.subscriber_position = self.create_subscription(
             CamData,
@@ -29,88 +29,152 @@ class WaypointPreditionNode(Node):
             '/predicted_positiondelay',
             10
         )
-        self.timer = self.create_timer(0.2, self.timer_callback)
-        self.x_buffer = deque(maxlen=5)
-        self.y_buffer = deque(maxlen=5)
-        self.time_buffer= deque(maxlen=5)
-        self.Föderband_layer = 0.0 
-        self.last_msg= None
-        self.obj_id=None
+
+        self.timer = self.create_timer(0.1, self.berechne_geschwindigkeit)        
         
         
-        self.get_logger().info('WaypointPredictionNode gestartet.')
+        
+        
+
+
+        self.x_alt = None
+        self.time_alt= None
+        self.obj_type = None
+        self.x_aktuell=None
+        self.x_logged =None
+        self.time_aktuell=None
+        self.y_aktuell=None
+        self.velocity_queue = []  
+        self.queue_y= []
+        
+
+
+        self.Föderband_layer = 0.0        
+        self.threshold = 0.02
+        self.grenze = 0.04
+        self.min_Elemente_queue= 10 
+        self.rejekted_objekt_type=0
+
+
+    def berechne_geschwindigkeit(self):
+
+        # Block 1: Typ-Check
+        if self.obj_type == self.rejekted_objekt_type or self.obj_type is None :
+            self.get_logger().debug(f"Block 1: Objekt übersprungen | obj_type = {self.obj_type}")
+        
+            return
+        if self.x_aktuell is None or self.time_aktuell is None:
+            self.get_logger().debug(f"Block 1: Keine Daten vom Callback | x_aktuell = {self.x_aktuell} | time_aktuell = {self.time_aktuell}")
+            return
+        # Block 2: Initialisierung
+        if self.x_alt is None or self.time_alt is None:
+            self.get_logger().debug(f"Block 2: Initialisierung | x_alt gesetzt auf {self.x_aktuell:.4f}")
+            self.aktualiesiere_Werte()
+            return
+
+        # Block 3: Neues Objekt erkannt
+        if abs(self.x_alt - self.x_aktuell) > self.threshold:
+            self.x_logged=self.x_alt
+            self.get_logger().info(f"Block 3: Neues Objekt erkannt | Sprung = {abs(self.x_alt - self.x_aktuell):.4f} > threshold {self.threshold}")
+            if len(self.velocity_queue) >= self.min_Elemente_queue :
+                self.median_vx = statistics.median(self.velocity_queue)
+                self.median_y = statistics.median(self.queue_y)
+                self.publish()
+                self.get_logger().info(f"Block 3: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
+            else:
+                self.get_logger().warning(f"Block 3: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
+            self.velocity_queue = []          # list reset
+            self.queue_y=[]
+            self.aktualiesiere_Werte()
+            return
+
+        if self.time_aktuell != self.time_alt:
+            dt=self.time_diff(self.time_aktuell,self.time_alt)
+            if dt<= 0:
+                self.get_logger().warning(f"Block 4: dt <= 0 ({dt}) | übersprungen")
+                return
+            vx = self.berechnung_Geschwindigkeit(self.x_aktuell,self.x_alt,dt)
+            self.velocity_queue.append(vx)        # list append
+            self.queue_y.append(self.y_aktuell)
+            self.get_logger().debug(f"Block 4: vx = {vx:.4f} | dt = {dt:.4f} | queue_länge = {len(self.velocity_queue)}")
+            self.aktualiesiere_Werte()
+
+        # Block 5: Objekt verlässt Band
+        if self.x_aktuell < self.grenze:
+            self.x_logged=self.x_aktuell
+            self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
+            if len(self.velocity_queue) >= self.min_Elemente_queue :
+                self.median_vx = statistics.median(self.velocity_queue)
+                self.median_y=statistics.median(self.queue_y)
+                self.publish()
+                self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
+            else:
+                self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
+            self.velocity_queue = []          # list reset
+            self.queue_y=[]
+            self.x_alt = None
+            self.time_alt=None
+        
+        
+        
+    # if type == 0 --> skip 
+    # else 
+        # if x_alt == None 
+            #x_alt = x_akjtuell 
+            # return 
+        # if abs(x_alt- x_aktuell) > threshold =0,02 
+            # if length von quee > 10 
+                # mache median auf vx und speichere 
+                # publisch msg 
+            # neue queee 
+            # return 
+        # else 
+            # berechne vx und packe es in die quee 
+            # delta_x = x_aktuell - x_alt
+            #vx = delta_x / dt  # dt = Zeit seit letztem Frame
+
+            #queue.append(vx)
+        # setzte x_aktuell zu  x_alt 
+        # if x_aktuell < grenze = 0,03 
+        # bilde den median auf der quee 
+        # publisch msg 
+        # leree queue 
+
 
     def robot_pos_callback(self, msg: CamData):
        
-        self.x_buffer.append(msg.x)
-        self.y_buffer.append(msg.y)
-        self.time_buffer.append(msg.timestamp)
-        self.obj_id=msg.obj_type 
+        self.x_aktuell=msg.x
+        self.y_aktuell=msg.y
+        self.time_aktuell=msg.timestamp
+        self.obj_type=msg.obj_type 
 
     
-    def timer_callback(self):
-        self.get_logger().info(
-        f'Buffergrößen: x={len(self.x_buffer)}, '
-        f'y={len(self.y_buffer)}, '
-        f't={len(self.time_buffer)}')
-         
-        if len(self.x_buffer) > 0 and self.last_msg==None :
-            self.last_msg=self.moving_average()
-            self.get_logger().info(
-                        f'last_msg gespeichert: '
-                        f'x={self.last_msg[0]:.4f}, '
-                        f'y={self.last_msg[1]:.4f}, '
-                        f't={self.last_msg[2]:.4f}'
-                    )
-
-            self.x_buffer.clear
-            self.y_buffer.clear
-            self.time_buffer.clear
-
-        if self.last_msg!= None and len(self.x_buffer) > 0:
-            self.aktuelle_Werte_msg =self.moving_average()
-            self.get_logger().info(
-        f'aktuelle Werte: '
-        f'x={self.aktuelle_Werte_msg[0]:.4f}, '
-        f'y={self.aktuelle_Werte_msg[1]:.4f}, '
-        f't={self.aktuelle_Werte_msg[2]:.4f}'
-    )
-
-            dt=self.time_diff_sec(self.aktuelle_Werte_msg[2],self.last_msg[2])
-            if dt <= 0:
-                return
-            vx=self.berechnung_Geschwindigkeit(self.aktuelle_Werte_msg[0],self.last_msg[0],dt )
-        else :
-            return
-
+    
+    def aktualiesiere_Werte(self):
+        self.x_alt=self.x_aktuell
+        self.time_alt=self.time_aktuell
+    
+    def publish(self):
 
         pred_msg = PredictedPosdelay()
         
-        pred_msg.vx = vx
-        pred_msg.y = self.aktuelle_Werte_msg[1]
+        pred_msg.vx = self.median_vx
+        pred_msg.y = self.median_y
         pred_msg.z = self.Föderband_layer 
-        pred_msg.x= self.aktuelle_Werte_msg[0]
-        pred_msg.obj_id = self.obj_id
+        pred_msg.x= self.x_logged
+        pred_msg.obj_id = self.obj_type
 
         self.publisher_prediction.publish(pred_msg)
-        self.get_logger().info('Prediction publiziert')
+        self.get_logger().info(f'Prediction publiziert | median_vx = {self.median_vx:.4f}| median_y = {self.median_y:.4f} | Aktuelles_X = {self.x_aktuell:.4f} | Obj_type = {self.obj_type:.4f}')
         
-
-        self.last_msg =None
-    def berechnung_Geschwindigkeit(self,avg_x,last_avg_x,dt):
-        vx=(avg_x-last_avg_x)/dt
+    def berechnung_Geschwindigkeit(self,akt_x,last_x,dt):
+        vx=(akt_x-last_x)/dt
         return vx 
 
-    def time_diff_sec(self, t1, t2) -> float:
+    def time_diff(self, t1, t2) -> float:
         
         return abs(t2 - t1)
-    
-    def moving_average(self):
-       
-        avg_x = sum(self.x_buffer) / len(self.x_buffer)
-        avg_y = sum(self.y_buffer) / len(self.y_buffer)
-        avg_time=sum(self.time_buffer) / len(self.time_buffer)
-        return avg_x, avg_y, avg_time
+        
 
 def main(args=None):
     rclpy.init(args=args)

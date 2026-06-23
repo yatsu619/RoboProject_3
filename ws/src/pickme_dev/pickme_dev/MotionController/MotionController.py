@@ -211,6 +211,7 @@ class MotionControllerNode(Node):
                         )
 
                     if (current_z > PICKHEIGHT_ABOVE_CONVEYOR * 1.1):
+                        self.activate_gripper = True
                         self.new_object_lock = True
                         print("Picked something up. Next state: AFTERPICK")
                         self.state = "AFTERPICK"
@@ -299,7 +300,7 @@ class MotionControllerNode(Node):
         self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])
         self.cmd.accel_y = self.controller_y.PDController(target_pos_y, current_pos[1])
         self.cmd.accel_z = self.controller_z.PDController(target_pos_z, current_pos[2])
-        self.cmd.activate_gripper = True
+        self.cmd.activate_gripper = False
 
     def AFTERPICK(self, target_pos_x: float, target_pos_y: float, target_pos_z: float, current_pos: list):
         self.cmd.accel_x = self.controller_x.PDController(target_pos_x, current_pos[0])

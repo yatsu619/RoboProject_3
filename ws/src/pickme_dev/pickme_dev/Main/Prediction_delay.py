@@ -90,78 +90,54 @@ class DelayBufferNode(Node):
 
     def timer_callback(self):
        
-        if self.activ_gripper == True and self.obj_geholt == False :
+      # Kein aktives Objekt → aus Puffer holen
+        if self.active_obj is None:
             if len(self.obj_buffer) > 0:
                 self.active_obj = self.obj_buffer.popleft()
-                self.obj_done=False
-                self.obj_geholt= True
                 self.get_logger().info(
-                    f"Nach Greifprozess: neues Objekt aus Puffer aktiviert "
-                    f"obj| vx = {self.active_obj['vx']:.4f}| y = {self.active_obj['y']:.4f} | Aktuelles_X = {self.active_obj['x']:.4f} | logging_time = {self.active_obj['zeitpunkt_logging']}"
+                    f"Neues Objekt aktiviert | obj_id={self.active_obj['obj_id']}"
                 )
+            else:
+                self.get_logger().debug(f"Puffer leer | kein Objekt vorhanden")
                 return
-            
-            if len(self.obj_buffer) <=0:
-                self.active_obj= None
-                self.obj_done= True
-                self.get_logger().info(
-                    f"Nach Greifprozess: kein objekt im puffer "
-                )
-            return
-        
-        if self.activ_gripper== False and self.obj_geholt== True:
-            self.obj_geholt= False
 
-
-
-        if self.active_obj== None and len(self.obj_buffer)>0: 
-            self.active_obj = self.obj_buffer.popleft()
-            self.obj_done=False
-            self.get_logger().info(
-                    f"inizial : erstes Objekt aus Puffer aktiviert "
-                    f"obj| vx = {self.active_obj['vx']:.4f}| y = {self.active_obj['y']:.4f} | Aktuelles_X = {self.active_obj['x']:.4f} | logging_time = {self.active_obj['zeitpunkt_logging']}"
-            )
-        if self.active_obj== None and len(self.obj_buffer)<=0:
-            self.obj_done=True
-            self.get_logger().info(
-                    f"leer: kein objet vorhanden  "
-            )
-            return
-        
-        x_zum_Startzeitpunkt= self.active_obj["x"]
+        # Werte aus aktivem Objekt
+        x_zum_Startzeitpunkt = self.active_obj["x"]
         vx = self.active_obj["vx"]
         y = self.active_obj["y"]
         z = self.active_obj["z"]
         obj_id = self.active_obj["obj_id"]
-        time_logged= self.active_obj["zeitpunkt_logging"]
-        time_now=time.time()
-        self.get_logger().info(
-        f"obj (obj_id={obj_id}),  y={y:.3f} m,  "
-        f"vx={vx:.3f} "
-    )
-        
-       
+        time_logged = self.active_obj["zeitpunkt_logging"]
 
-        # Innerhalb des Greifprozesses -> Position berechnen und publizieren
-        dt = abs(time_now-time_logged)
+        dt = abs(time.time() - time_logged)
         greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
-        self.get_logger().info(
-        f"Greifpunkt  (obj_id={obj_id}), "
-        f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
-        f"dt={dt:.3f} s"
-    )
-        if greifpunkt_x< self.closest_grip_location and self.obj_done is False:
-            pred_msg = PredictedPos()
-            pred_msg.x = greifpunkt_x
-            pred_msg.y = y
-            pred_msg.z = z
-            pred_msg.obj_id = float(obj_id)
+
+        # Noch zu weit weg → warten
+        if greifpunkt_x < self.closest_grip_location:
+            self.get_logger().debug(
+                f"Warten | obj_id={obj_id} | x={greifpunkt_x:.3f} < grenze={self.closest_grip_location}"
+            )
+            return
+
+        # Greifer hat gegriffen → reset und nächstes Objekt
+        if self.activ_gripper == True:
+            self.active_obj = None
             self.get_logger().info(
-        f"Greifpunkt publiziert (obj_id={obj_id}), "
-        f"x={greifpunkt_x:.3f} m, y={y:.3f} m, z={z:.3f} m, "
-        f"dt={dt:.3f} s"
-    )
-            self.publisher.publish(pred_msg)
+                f"Greifer aktiv | obj_id={obj_id} abgeschlossen | nächstes Objekt wird geholt"
+            )
+            return
+
+        # In Reichweite + Greifer noch nicht aktiv → publishen
+        pred_msg = PredictedPos()
+        pred_msg.x = greifpunkt_x
+        pred_msg.y = y
+        pred_msg.z = z
+        pred_msg.obj_id = float(obj_id)
+        self.publisher.publish(pred_msg)
+        self.get_logger().info(
+            f"Publishe | obj_id={obj_id} | x={greifpunkt_x:.3f} m | dt={dt:.3f} s"
+        )
+    
         
 
 

@@ -4,19 +4,13 @@ from rclpy.node import Node
 
 from ro45_portalrobot_interfaces.msg import CamData, PredictedPosdelay
 import statistics
-
-
-
-
-
-
-
+from pickme_dev.WaypointPredictionEngine.Predic_logic import ConveyorSpeedEstimator
 
 class WaypointPreditionNode(Node):
     def __init__(self):
         super().__init__('WaypointPredition_node')
         self.get_logger().info('WaypointPredictionNode gestartet.')
-
+        self.speed_calculator= ConveyorSpeedEstimator()
         self.subscriber_position = self.create_subscription(
             CamData,
             '/CamData',
@@ -32,11 +26,6 @@ class WaypointPreditionNode(Node):
 
         self.timer = self.create_timer(0.1, self.berechne_geschwindigkeit)        
         
-        
-        
-        
-
-
         self.x_alt = None
         self.time_alt= None
         self.obj_type = None
@@ -46,11 +35,11 @@ class WaypointPreditionNode(Node):
         self.y_aktuell=None
         self.velocity_queue = []  
         self.queue_y= []
-        
+        self.median_vx=None
 
 
         self.Föderband_layer = 0.0        
-        self.threshold = 0.02
+        self.threshold = 0.06
         self.grenze = 0.04
         self.min_Elemente_queue= 10 
         self.rejekted_objekt_type=0
@@ -71,7 +60,7 @@ class WaypointPreditionNode(Node):
             self.get_logger().debug(f"Block 2: Initialisierung | x_alt gesetzt auf {self.x_aktuell:.4f}")
             self.aktualiesiere_Werte()
             return
-
+        """ 
         # Block 3: Neues Objekt erkannt
         if abs(self.x_alt - self.x_aktuell) > self.threshold:
             self.x_logged=self.x_alt
@@ -87,29 +76,33 @@ class WaypointPreditionNode(Node):
             self.queue_y=[]
             self.aktualiesiere_Werte()
             return
-
+"""
         if self.time_aktuell != self.time_alt:
-            dt=self.time_diff(self.time_aktuell,self.time_alt)
-            if dt<= 0:
-                self.get_logger().warning(f"Block 4: dt <= 0 ({dt}) | übersprungen")
-                return
-            vx = self.berechnung_Geschwindigkeit(self.x_aktuell,self.x_alt,dt)
-            self.velocity_queue.append(vx)        # list append
+            #dt=self.time_diff(self.time_aktuell,self.time_alt)
+            #if dt<= 0:
+                #self.get_logger().warning(f"Block 4: dt <= 0 ({dt}) | übersprungen")
+                #return
+            #vx = self.berechnung_Geschwindigkeit(self.x_aktuell,self.x_alt,dt)
+            #self.velocity_queue.append(vx)        # list append
             self.queue_y.append(self.y_aktuell)
-            self.get_logger().debug(f"Block 4: vx = {vx:.4f} | dt = {dt:.4f} | queue_länge = {len(self.velocity_queue)}")
+            #self.get_logger().debug(f"Block 4: vx = {vx:.4f} | dt = {dt:.4f} | queue_länge = {len(self.velocity_queue)}")
             self.aktualiesiere_Werte()
-
+            
+        self.median_vx=self.speed_calculator.update(self.x_aktuell,self.time_aktuell)
+        self.x_logged=self.x_aktuell
+        if self.median_vx is None:
+            return
         # Block 5: Objekt verlässt Band
         if self.x_aktuell < self.grenze:
             self.x_logged=self.x_aktuell
             self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
-            if len(self.velocity_queue) >= self.min_Elemente_queue :
-                self.median_vx = statistics.median(self.velocity_queue)
-                self.median_y=statistics.median(self.queue_y)
-                self.publish()
-                self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
-            else:
-                self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
+            #if len(self.velocity_queue) >= self.min_Elemente_queue :
+                #self.median_vx = statistics.median(self.velocity_queue)
+            self.median_y=statistics.median(self.queue_y)
+            self.publish()
+            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
+            
+            self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
             self.velocity_queue = []          # list reset
             self.queue_y=[]
             self.x_alt = None

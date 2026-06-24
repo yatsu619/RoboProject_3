@@ -48,7 +48,7 @@ class DelayBufferNode(Node):
         self.obj_geholt=False
         self.activ_gripper=False
         self.obj_done=False
-        
+        self.last_x=None
         self.closest_grip_location= 0
         
 
@@ -73,11 +73,14 @@ class DelayBufferNode(Node):
         }
         
        
-        
-        self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
-        self.get_logger().info(
-                f"obj gefuffert  | vx = {obj['vx']:.4f}| y = {obj['y']:.4f} | Aktuelles_X = {obj['x']:.4f} | logging_time = {obj['zeitpunkt_logging']}"
-                f"Pufferlänge={len(self.obj_buffer)}"
+        if self.last_x is None:
+            self.last_x=obj["x"]
+            return
+        if self.last_x < obj["x"]:
+            self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
+            self.get_logger().info(
+                    f"obj gefuffert  | vx = {obj['vx']:.4f}| y = {obj['y']:.4f} | Aktuelles_X = {obj['x']:.4f} | logging_time = {obj['zeitpunkt_logging']}"
+                    f"Pufferlänge={len(self.obj_buffer)}"
                 )
         
 

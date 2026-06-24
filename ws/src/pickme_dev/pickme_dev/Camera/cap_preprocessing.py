@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 import time
-from PW_coord_transform import calibrate, pixel_to_world
-
+from pickme_dev.Camera.PW_coord_transform import calibrate, pixel_to_world
+#from PW_coord_transform import calibrate, pixel_to_world
 TRAPEZ = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
 def detect_aruco_markers(frame):
@@ -52,7 +52,7 @@ def process_frame(frame, H):
         area  = stats[i, cv2.CC_STAT_AREA]
         w_comp = stats[i, cv2.CC_STAT_WIDTH]
         h_comp = stats[i, cv2.CC_STAT_HEIGHT]
-        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 150 and h_comp < 500:
+        if area > 2000 and area < 80000 and w_comp < 400 and h_comp > 50 and h_comp < 500:
             x = stats[i, cv2.CC_STAT_LEFT]
             y = stats[i, cv2.CC_STAT_TOP]
             w = stats[i, cv2.CC_STAT_WIDTH]

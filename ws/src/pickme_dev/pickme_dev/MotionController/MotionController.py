@@ -47,6 +47,8 @@ IDLE_POS_Y = 0
 UNICORN = 1
 CAT = 2
 
+ROBOT_GEARING_OFFSET_FACTOR = 1.2
+
 class MotionControllerNode(Node):
     def __init__(self):
         super().__init__('motioncontroller_node')
@@ -193,7 +195,7 @@ class MotionControllerNode(Node):
             print("Homing Komplett")
         else:
             # Internal RCS expressed as WCS offset
-            current_x = (self.robot_x - TCP_OFFSET_FROM_ENDSTOP_X) + self.wcs_rcs_offset_x
+            current_x = ((self.robot_x - TCP_OFFSET_FROM_ENDSTOP_X) + self.wcs_rcs_offset_x) * ROBOT_GEARING_OFFSET_FACTOR
             current_y = (self.robot_y - TCP_OFFSET_FROM_ENDSTOP_Y) + self.wcs_rcs_offset_y
             current_z = (self.robot_z + TCP_OFFSET_FROM_ENDSTOP_Z) + self.wcs_rcs_offset_z
 

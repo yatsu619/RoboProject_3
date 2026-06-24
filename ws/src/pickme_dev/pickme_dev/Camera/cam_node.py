@@ -29,17 +29,17 @@ class CamNode(Node):
         if len(objekte) != len(labels):
             self.get_logger().error(f'Anzahl Objekte ({len(objekte)}) != Anzahl Labels ({len(labels)})')
             return
-        
-        for i, (world_x, world_y, timestamp) in enumerate(objekte):
-            if i >= len(labels):
-                break
-            msg = CamData()
-            msg.obj_type = labels[i]
-            msg.x = world_x
-            msg.y = world_y
-            msg.timestamp = timestamp
-            self.publisher.publish(msg)
-            self.get_logger().info(f'Publiziert: {msg.obj_type}, {msg.x:.4f}, {msg.y:.4f}')
+        else:
+            for i, (world_x, world_y, timestamp) in enumerate(objekte):
+                if i >= len(labels):
+                    break
+                msg = CamData()
+                msg.obj_type = labels[i]
+                msg.x = world_x
+                msg.y = world_y
+                msg.timestamp = timestamp
+                self.publisher.publish(msg)
+                self.get_logger().info(f'Publiziert: {msg.obj_type}, {msg.x:.4f}, {msg.y:.4f}')
 
 def main(args=None):
     rclpy.init(args=args)

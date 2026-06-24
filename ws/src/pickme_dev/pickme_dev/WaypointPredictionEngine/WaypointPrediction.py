@@ -77,16 +77,16 @@ class WaypointPreditionNode(Node):
             self.aktualiesiere_Werte()
             return
 """
-        if self.time_aktuell != self.time_alt:
+        #if self.time_aktuell != self.time_alt:
             #dt=self.time_diff(self.time_aktuell,self.time_alt)
             #if dt<= 0:
                 #self.get_logger().warning(f"Block 4: dt <= 0 ({dt}) | übersprungen")
                 #return
             #vx = self.berechnung_Geschwindigkeit(self.x_aktuell,self.x_alt,dt)
             #self.velocity_queue.append(vx)        # list append
-            self.queue_y.append(self.y_aktuell)
+        self.queue_y.append(self.y_aktuell)
             #self.get_logger().debug(f"Block 4: vx = {vx:.4f} | dt = {dt:.4f} | queue_länge = {len(self.velocity_queue)}")
-            self.aktualiesiere_Werte()
+            #self.aktualiesiere_Werte()
             
         self.median_vx=self.speed_calculator.update(self.x_aktuell,self.time_aktuell)
         self.x_logged=self.x_aktuell

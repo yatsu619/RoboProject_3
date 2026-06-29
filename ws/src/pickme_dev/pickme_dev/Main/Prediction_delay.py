@@ -50,7 +50,7 @@ class DelayBufferNode(Node):
         self.obj_done=False
         self.last_x=None
         self.closest_grip_location= 0
-        
+        self.gripper_lock=False
 
 
 
@@ -73,7 +73,7 @@ class DelayBufferNode(Node):
         }
         
        
-         # Erstes Objekt → direkt puffern und last_x setzen
+         # Erstes Objekt -> direkt puffern und last_x setzen
         if self.last_x is None:
             self.last_x = obj["x"]
             self.obj_buffer.append(obj)
@@ -97,7 +97,7 @@ class DelayBufferNode(Node):
 
     def timer_callback(self):
        
-      # Kein aktives Objekt → aus Puffer holen
+      # Kein aktives Objekt -> aus Puffer holen
         if self.active_obj is None:
             if len(self.obj_buffer) > 0:
                 self.active_obj = self.obj_buffer.popleft()
@@ -119,7 +119,10 @@ class DelayBufferNode(Node):
         dt = abs(time.time() - time_logged)
         greifpunkt_x = vx * dt + x_zum_Startzeitpunkt
 
-        # Noch zu weit weg → warten
+        if self.activ_gripper is False and self.gripper_lock is True:
+            self.gripper_lock=False 
+
+        # Noch zu weit weg -> warten
         if greifpunkt_x < self.closest_grip_location:
             self.obj_geholt=None
             self.get_logger().debug(
@@ -127,15 +130,16 @@ class DelayBufferNode(Node):
             )
             return
 
-        # Greifer hat gegriffen → reset und nächstes Objekt
-        if self.activ_gripper == True:
+        # Greifer hat gegriffen -> reset und nächstes Objekt
+        if self.activ_gripper is True and self.gripper_lock is False :
             self.active_obj = None
+            self.gripper_lock=True
             self.get_logger().info(
                 f"Greifer aktiv | obj_id={obj_id} abgeschlossen | nächstes Objekt wird geholt"
             )
             return
 
-        # In Reichweite + Greifer noch nicht aktiv → publishen
+        # In Reichweite + Greifer noch nicht aktiv -> publishen
         pred_msg = PredictedPos()
         pred_msg.x = greifpunkt_x*-1
         pred_msg.y = y

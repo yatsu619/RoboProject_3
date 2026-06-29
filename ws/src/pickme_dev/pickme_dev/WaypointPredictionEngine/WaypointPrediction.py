@@ -1,7 +1,7 @@
 
 import rclpy
 from rclpy.node import Node
-from collections import deque
+from collections import Counter, deque
 from ro45_portalrobot_interfaces.msg import CamData, PredictedPosdelay
 import statistics
 from pickme_dev.WaypointPredictionEngine.Predic_logic import BeltVelocityTracker
@@ -33,11 +33,15 @@ class WaypointPreditionNode(Node):
         self.x_logged =None
         self.time_aktuell=None
         self.y_aktuell=None
-        self.obj_type_old= None
-        self.queue_obj = deque()
+        
 
         self.queue_y= []
         self.median_vx=None
+        
+        self.buffer = []             
+          
+        self.window_size = 32
+        self.last_obj_type=None
 
 
         self.Föderband_layer = 0.0        
@@ -50,10 +54,10 @@ class WaypointPreditionNode(Node):
     def berechne_geschwindigkeit(self):
 
     
-        if self.obj_type == self.rejekted_objekt_type :
-            self.get_logger().debug(f"Block 1: Objekt übersprungen | obj_type = {self.obj_type}")
+        #if self.obj_type == self.rejekted_objekt_type :
+         #   self.get_logger().debug(f"Block 1: Objekt übersprungen | obj_type = {self.obj_type}")
         
-            return
+         #   return
         if self.x_aktuell is None or self.time_aktuell is None:
             self.get_logger().debug(f"Block 1: Keine Daten vom Callback | x_aktuell = {self.x_aktuell} | time_aktuell = {self.time_aktuell}")
             return
@@ -62,9 +66,7 @@ class WaypointPreditionNode(Node):
             self.get_logger().debug(f"Block 2: Initialisierung | x_alt gesetzt auf {self.x_aktuell:.4f}")
             self.aktualiesiere_Werte()
             return
-        if self.obj_type is not self.obj_type_old or self.obj_type is None :
-            self.queue_obj.append(self.obj_type)
-            self.obj_type_old=self.obj_type
+        
 
         self.queue_y.append(self.y_aktuell)
           
@@ -79,9 +81,13 @@ class WaypointPreditionNode(Node):
             self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
             
             self.median_y=statistics.median(self.queue_y)
-            if len(self.queue_obj) <=0:
-                return
-            self.queue_obj.popleft()
+            result = self.trigger()
+
+            if result is None:
+                self.obj_type = self.last_obj_type
+            else:
+                self.obj_type = result
+                self.last_obj_type = self.obj_type
             self.publish()
             self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | ")
             
@@ -97,8 +103,8 @@ class WaypointPreditionNode(Node):
         self.x_aktuell=msg.x
         self.y_aktuell=msg.y
         self.time_aktuell=msg.timestamp
-        self.obj_type=msg.obj_type 
-
+        self.add_id(msg.obj_type)
+        
     
     
     def aktualiesiere_Werte(self):
@@ -116,7 +122,7 @@ class WaypointPreditionNode(Node):
         pred_msg.obj_id = self.obj_type
 
         self.publisher_prediction.publish(pred_msg)
-        self.get_logger().info(f'Prediction publiziert | median_vx = {self.median_vx:.4f}| median_y = {self.median_y:.4f} | Aktuelles_X = {self.x_aktuell:.4f} | Obj_type = {self.obj_type:.4f}')
+        self.get_logger().info(f'Prediction publiziert | median_vx = {self.median_vx:.4f}| median_y = {self.median_y:.4f} | Aktuelles_X = {self.x_aktuell:.4f} | Obj_type = {self.obj_type}')
         
     def berechnung_Geschwindigkeit(self,akt_x,last_x,dt):
         vx=(akt_x-last_x)/dt
@@ -125,6 +131,36 @@ class WaypointPreditionNode(Node):
     def time_diff(self, t1, t2) -> float:
         
         return abs(t2 - t1)
+        
+    def add_id(self, obj_id):
+        """Wird aufgerufen wenn Kamera eine ID published"""
+        self.buffer.append(obj_id)
+        # Buffer nicht unbegrenzt wachsen lassen
+        if len(self.buffer) > self.window_size:
+            self.buffer.pop(0)
+
+    def trigger(self):
+        """
+        Wird aufgerufen wenn Sensor meldet: Objekt hat Band verlassen.
+        Gibt die wahrscheinlichste ID zurück und entfernt sie aus dem Buffer.
+        """
+        if not self.buffer:
+            return None
+
+        counter = Counter(self.buffer)
+        # Häufigstes Element = das Objekt das am längsten gesehen wurde
+        best_id, _ = counter.most_common(1)[0]
+
+        # Ausgabe
+       
+        
+
+        # Alle Vorkommen dieser ID aus dem Buffer entfernen
+        # nächster Trigger bekommt das nächste Objekt
+        self.buffer = [x for x in self.buffer if x != best_id]
+
+        
+        return best_id
         
 
 def main(args=None):

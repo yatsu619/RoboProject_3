@@ -34,7 +34,7 @@ class CamNode(Node):
             for i, (world_x, world_y, timestamp) in enumerate(objekte):
                 if i >= len(labels):
                     break
-                if labels[i] == 0 and objekte:
+                if labels[i] == 0:
                     return
                 msg = CamData()
                 msg.obj_type = labels[i]

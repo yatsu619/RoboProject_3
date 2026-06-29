@@ -33,7 +33,8 @@ class WaypointPreditionNode(Node):
         self.x_logged =None
         self.time_aktuell=None
         self.y_aktuell=None
-        
+        self.obj_type_old= None
+        self.queue_obj =[]
         self.queue_y= []
         self.median_vx=None
 
@@ -60,7 +61,10 @@ class WaypointPreditionNode(Node):
             self.get_logger().debug(f"Block 2: Initialisierung | x_alt gesetzt auf {self.x_aktuell:.4f}")
             self.aktualiesiere_Werte()
             return
-       
+        if self.obj_type is not self.obj_type_old:
+            self.queue_obj.append(self.obj_type)
+            self.obj_type_old=self.obj_type
+
         self.queue_y.append(self.y_aktuell)
           
             
@@ -74,11 +78,11 @@ class WaypointPreditionNode(Node):
             self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
             
             self.median_y=statistics.median(self.queue_y)
-            if self.obj_type is not 0 :
-                self.publish()
-            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | ")
+            self.queue_obj.popleft()
+            self.publish()
+            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
             
-            #self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
+            self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
            
             self.queue_y=[]
             self.x_alt = None

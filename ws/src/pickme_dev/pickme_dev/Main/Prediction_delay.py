@@ -123,7 +123,7 @@ class DelayBufferNode(Node):
             self.gripper_lock=False 
 
         # Noch zu weit weg -> warten
-        if greifpunkt_x < self.closest_grip_location:
+        if greifpunkt_x > self.closest_grip_location:
             self.obj_geholt=None
             self.get_logger().debug(
                 f"Warten | obj_id={obj_id} | x={greifpunkt_x:.3f} < grenze={self.closest_grip_location}"
@@ -141,7 +141,7 @@ class DelayBufferNode(Node):
 
         # In Reichweite + Greifer noch nicht aktiv -> publishen
         pred_msg = PredictedPos()
-        pred_msg.x = greifpunkt_x*-1
+        pred_msg.x = greifpunkt_x
         pred_msg.y = y
         pred_msg.z = z
         pred_msg.obj_id = float(obj_id)

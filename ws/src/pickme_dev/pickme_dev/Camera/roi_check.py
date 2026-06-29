@@ -3,7 +3,7 @@ import numpy as np
 
 punkte = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 

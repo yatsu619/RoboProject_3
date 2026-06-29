@@ -59,8 +59,15 @@ def process_frame(frame, H):
             h = stats[i, cv2.CC_STAT_HEIGHT]
             if x < 288 or x + w > 1470:
                 continue
-            center_x = x + w // 2
-            center_y = y + h // 2
+            #center_x = x + w // 2
+            #center_y = y + h // 2
+            
+            M = cv2.moments(roi_binary[y:y+h, x:x+w])
+            if M["m00"] == 0:
+                continue
+            center_x = x + int(M["m10"] / M["m00"])
+            center_y = y + int(M["m01"] / M["m00"])
+            
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
             world_x, world_y = pixel_to_world(center_x, center_y, H)

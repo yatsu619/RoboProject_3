@@ -26,20 +26,20 @@ WCS_OFFSET_TO_TCP_Z = -0.095
 
 # Sorting bins coordinates expressed as offset from WCS in [m]
 # Y-Values are slightly beyond negative endstops. This is not a bug and thus will not be fixed.
-SORTING_BIN_UNICORN_X = -0.060
-SORTING_BIN_UNICORN_Y = -0.170
+SORTING_BIN_UNICORN_X = -0.100
+SORTING_BIN_UNICORN_Y = -0.040
 
-SORTING_BIN_CAT_X = -0.150
-SORTING_BIN_CAT_Y = -0.170
+SORTING_BIN_CAT_X = -0.200
+SORTING_BIN_CAT_Y = -0.040
 
 # XY-Margins
-MARGIN_X = 0.005
-MARGIN_Y = 0.005
-MARGIN_Z = 0.005
+MARGIN_X = 0.01
+MARGIN_Y = 0.01
+MARGIN_Z = 0.01
 
 # Pickheight conveyor
-HEIGHT_ABOVE_CONVEYOR = -0.025
-PICKHEIGHT_ABOVE_CONVEYOR = -0.0015
+HEIGHT_ABOVE_CONVEYOR = -0.04
+PICKHEIGHT_ABOVE_CONVEYOR = -0.0010
 IDLE_POS_X = 0
 IDLE_POS_Y = 0
 
@@ -47,7 +47,7 @@ IDLE_POS_Y = 0
 UNICORN = 1
 CAT = 2
 
-ROBOT_GEARING_OFFSET_FACTOR = 1.2
+ROBOT_GEARING_OFFSET_FACTOR = 1.35
 
 class MotionControllerNode(Node):
     def __init__(self):
@@ -221,7 +221,7 @@ class MotionControllerNode(Node):
 
                 case "AFTERPICK":
                     self.AFTERPICK(
-                        target_pos_x=current_x,
+                        target_pos_x=IDLE_POS_X,
                         target_pos_y=current_y,
                         target_pos_z=HEIGHT_ABOVE_CONVEYOR,
                         current_pos=[current_x, current_y, current_z]
@@ -242,7 +242,8 @@ class MotionControllerNode(Node):
                                 current_pos=[current_x, current_y, current_z]
                                 )
 
-                            if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_X) and (self.delta_y == 0):
+                            if (abs(SORTING_BIN_CAT_X - current_x) < MARGIN_X) and (abs(SORTING_BIN_CAT_Y - current_y) < MARGIN_Y):
+                                print("Pick and Placed CAT")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"
                                 self.new_object_lock = False
@@ -255,7 +256,7 @@ class MotionControllerNode(Node):
                                 current_pos=[current_x, current_y, current_z]
                                 )
 
-                            if (abs(SORTING_BIN_UNICORN_X - current_x) < MARGIN_Z) and (self.delta_y == 0):
+                            if (abs(SORTING_BIN_UNICORN_X - current_x) < MARGIN_X) and (abs(SORTING_BIN_UNICORN_Y - current_y) < MARGIN_Y):
                                 print("Pick and Placed UNICORN")
                                 self.cmd.activate_gripper = False
                                 self.state = "IDLE"

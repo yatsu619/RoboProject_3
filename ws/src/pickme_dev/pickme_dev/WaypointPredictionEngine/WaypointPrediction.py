@@ -74,10 +74,11 @@ class WaypointPreditionNode(Node):
             self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
             
             self.median_y=statistics.median(self.queue_y)
-            self.publish()
-            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | Werte = {len(self.velocity_queue)}")
+            if self.obj_type is not 0 :
+                self.publish()
+            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | ")
             
-            self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
+            #self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
            
             self.queue_y=[]
             self.x_alt = None

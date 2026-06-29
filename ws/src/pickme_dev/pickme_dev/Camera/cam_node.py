@@ -29,10 +29,13 @@ class CamNode(Node):
         if len(objekte) != len(labels):
             self.get_logger().error(f'Anzahl Objekte ({len(objekte)}) != Anzahl Labels ({len(labels)})')
             return
+        
         else:
             for i, (world_x, world_y, timestamp) in enumerate(objekte):
                 if i >= len(labels):
                     break
+                if labels[i] == 0 and objekte:
+                    return
                 msg = CamData()
                 msg.obj_type = labels[i]
                 msg.x = world_x

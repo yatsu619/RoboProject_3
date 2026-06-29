@@ -76,13 +76,15 @@ class DelayBufferNode(Node):
          # Erstes Objekt -> direkt puffern und last_x setzen
         if self.last_x is None:
             self.last_x = obj["x"]
-            self.obj_buffer.append(obj)
-            self.get_logger().info(f"Erstes Objekt gepuffert | x={obj['x']:.4f}")
+            if obj["obj_id"] is not 0 :
+                self.obj_buffer.append(obj)
+                self.get_logger().info(f"Erstes Objekt gepuffert | x={obj['x']:.4f}")
             return
             
         if obj["x"] > self.last_x:
-            self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
-            self.get_logger().info(
+            if obj["obj_id"] is not 0 :
+                self.obj_buffer.append(obj) #Objekt erstes mal oder neues objekt  ->  Objekt puffern
+                self.get_logger().info(
                     f"obj gefuffert  | vx = {obj['vx']:.4f}| y = {obj['y']:.4f} | Aktuelles_X = {obj['x']:.4f} | logging_time = {obj['zeitpunkt_logging']}"
                     f"Pufferlänge={len(self.obj_buffer)}"
                 )

@@ -76,11 +76,11 @@ class WaypointPreditionNode(Node):
         if self.median_vx is None:
             return
         
-        if self.x_aktuell < self.grenze :
-            self.x_logged=self.x_aktuell
+        if self.x_aktuell < self.grenze:
+            self.x_logged = self.x_aktuell
             self.get_logger().info(f"Block 5: Objekt verlässt Band | x_aktuell = {self.x_aktuell:.4f} < grenze {self.grenze}")
-            
-            self.median_y=statistics.median(self.queue_y)
+
+            self.median_y = statistics.median(self.queue_y)
             result = self.trigger()
 
             if result is None:
@@ -88,14 +88,19 @@ class WaypointPreditionNode(Node):
             else:
                 self.obj_type = result
                 self.last_obj_type = self.obj_type
-            self.publish()
-            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f} | ")
-            
-            #self.get_logger().warning(f"Block 5: Queue zu klein ({len(self.velocity_queue)} < {self.min_Elemente_queue}) | kein Publish")
-           
-            self.queue_y=[]
+
+            self.get_logger().info(f"Block 5: result={result} | obj_type={self.obj_type} | last_obj_type={self.last_obj_type}")
+
+            try:
+                self.publish()
+            except Exception as e:
+                self.get_logger().error(f"Publish fehlgeschlagen: {e}")
+
+            self.get_logger().info(f"Block 5: Publish | median_vx = {self.median_vx:.4f} | median_y = {self.median_y:.4f}")
+
+            self.queue_y = []
             self.x_alt = None
-            self.time_alt=None
+            self.time_alt = None
     
 
     def robot_pos_callback(self, msg: CamData):

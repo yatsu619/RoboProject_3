@@ -13,6 +13,19 @@ class Controller:
         self.accel = ACCEL
 
     def PDController(self, target: float, actual: float) -> float:
+        """
+        Implements a standard PD-Controller.
+        First an error is calculated. The error is then independently
+        multiplied with kp (P-Controller) as well as differentiated with
+        the last error (P-Controller). The outputs are combined and then
+        capped at the max acceleration values.
+        
+        :param target: Target position to be reached
+        :type taget: float
+        :param actual: Current position
+        :type actual: float
+        """
+
         accel = 0
         error = target - actual
     

@@ -3,14 +3,40 @@ import numpy as np
 import joblib
 import os
 
+"""
+Klassifikation der erkannten Objekte im Live-Betrieb.
+ 
+Lädt beim Start das trainierte Decision-Tree-Modell und klassifiziert
+damit zur Laufzeit jedes im Kamerabild erkannte Objekt als Ausschuss,
+Einhorn oder Katze.
+"""
+
 TRAPEZ = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
 class MLDetection:
+    """
+    Kapselt das geladene Klassifikationsmodell und die Klassifikation
+    eines Kamerabildes.
+    """
     def __init__(self):
         model_path = os.path.join(os.path.dirname(__file__), "model3.pkl")
         self._model = joblib.load(model_path)
 
     def classify(self, img):
+        """
+        Klassifiziert alle Objekte im übergebenen Kamerabild.
+ 
+        Maskiert das Bild auf den Trapez-Bereich, wandelt es über
+        Graustufen, Otsu-Schwellwert und morphologisches Opening in ein
+        Binärbild um, filtert die gefundenen Konturen nach Größe und
+        Sichtbarkeit und sortiert sie von rechts nach links. Für jede
+        verbleibende Kontur werden die Hu-Momente berechnet und dem
+        Modell zur Vorhersage übergeben.
+ 
+        Gibt eine Liste der vorhergesagten Klassen zurück
+        (0 = Ausschuss, 1 = Einhorn, 2 = Katze), in derselben
+        Reihenfolge wie die erkannten Objekte.
+        """
         maske = np.zeros(img.shape[:2], dtype=np.uint8)
         cv2.fillPoly(maske, [TRAPEZ], 255)
         img_masked = cv2.bitwise_and(img, img, mask=maske)

@@ -4,7 +4,15 @@ import os
 import joblib
 from sklearn.tree import DecisionTreeClassifier
 
-#einfügen, wenn von der bahn 20x für einhorn id 1 ist und dann 1-2x id 2 zeigt dann trotzdem id 1 ausgeben
+"""
+Trainiert den Decision-Tree-Klassifikator anhand eigener Testbilder.
+ 
+Liest für jede Klasse (Katze, Einhorn, Kreis, Quadrat) alle Bilder aus dem
+jeweiligen Unterordner ein, berechnet daraus die Merkmale (Hu-Momente
+hu_0 und hu_3) und trainiert damit einen Decision Tree Classifier.
+Kreis und Quadrat werden dabei beide als Ausschuss (Label 0) behandelt.
+Das fertige Modell wird anschließend als Datei gespeichert.
+"""
 
 IMAGE_DIR = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images4"
 MODEL_PATH = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/model3.pkl"
@@ -19,6 +27,15 @@ CLASSES = {
 TRAPEZ = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
 def get_features(image_path):
+    """
+    Berechnet die Merkmale (Hu-Momente hu_0 und hu_3) für ein einzelnes
+    Trainingsbild.
+ 
+    Maskiert das Bild auf den Trapez-Bereich, wandelt es in ein
+    Binärbild um, sucht die größte äußere Kontur und berechnet daraus
+    die Hu-Momente. Gibt None zurück, wenn kein gültiges Objekt
+    gefunden wurde.
+    """
     img = cv2.imread(image_path)
     if img is None:
         return None
@@ -42,11 +59,12 @@ def get_features(image_path):
     if moments["m00"] == 0:
         return None
 
+    # log-Transformation, damit die Hu-Momente-Werte besser vergleichbar sind
     hu_raw = cv2.HuMoments(moments).flatten()
     hu_log = -np.sign(hu_raw) * np.log10(np.abs(hu_raw) + 1e-10)
     return [hu_log[0], hu_log[3]]
 
-
+# Merkmale und Labels aus allen Trainingsbildern sammeln
 X = []
 y = []      
 
@@ -72,6 +90,7 @@ print(f"\nGesamt: {len(X)} Bilder geladen")
 X = np.array(X)
 y = np.array(y)
 
+# Decision Tree trainieren und Trainingsgenauigkeit ausgeben
 model = DecisionTreeClassifier(max_depth=5)
 model.fit(X, y)
 

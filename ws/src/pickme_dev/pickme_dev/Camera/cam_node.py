@@ -5,8 +5,22 @@ from ro45_portalrobot_interfaces.msg import CamData
 from pickme_dev.Camera.cap_preprocessing import setup, process_frame
 from pickme_dev.Camera.ml_detection import MLDetection
 
+"""
+ROS2-Knoten der Kamera-Pipeline.
+ 
+Führt Positionsbestimmung (cap_preprocessing) und Klassifikation
+(ml_detection) für jedes Kamerabild zusammen und veröffentlicht die
+erkannten Objekte (Typ, Weltkoordinate, Zeitstempel) auf dem Topic
+/CamData.
+"""
+
 class CamNode(Node):
     def __init__(self):
+        """
+        Initialisiert den Knoten: öffnet die Kamera, führt die
+        Kalibrierung durch, lädt das Klassifikationsmodell und startet
+        den Timer für die wiederkehrende Verarbeitung.
+        """
         super().__init__('cam_node')
         self.publisher = self.create_publisher(CamData, '/CamData', 10)
         self.cap = cv2.VideoCapture(2)
@@ -20,6 +34,12 @@ class CamNode(Node):
         self.get_logger().info('CamNode gestartet')
 
     def timer_callback(self):
+        """
+        Wird periodisch aufgerufen: liest ein neues Kamerabild ein,
+        bestimmt Objektpositionen und -klassen, prüft, ob beide Anzahlen
+        übereinstimmen, und veröffentlicht bei Übereinstimmung für jedes
+        Objekt eine CamData-Nachricht.
+        """
         ret, frame = self.cap.read()
         if not ret:
             return

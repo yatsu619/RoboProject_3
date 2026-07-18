@@ -1,9 +1,16 @@
 import cv2
 import numpy as np
 
+"""
+Zeigt die aktuell festgelegte Trapez-Maske live über dem Kamerabild an.
+ 
+Dient zur Kontrolle, ob die Kamera korrekt über dem Förderband ausgerichtet
+ist, bevor mit der eigentlichen Bildverarbeitung begonnen wird.
+"""
+
 punkte = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(2)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 

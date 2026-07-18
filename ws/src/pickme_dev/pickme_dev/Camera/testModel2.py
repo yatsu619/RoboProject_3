@@ -4,6 +4,16 @@ import os
 import joblib
 from sklearn.metrics import classification_report
 
+"""
+Testet das trainierte Klassifikationsmodell auf einem separaten
+Testdatensatz.
+ 
+Berechnet für jedes Testbild dieselben Merkmale wie beim Training,
+lässt das gespeicherte Modell eine Vorhersage treffen und vergleicht
+diese mit der tatsächlichen Klasse. Gibt am Ende die Gesamtgenauigkeit
+sowie eine klassenweise Auswertung aus.
+"""
+
 IMAGE_DIR = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/test_images"
 MODEL_PATH = "/home/yatheesh/Documents/rohbotik_project/PickMe/RoboProject_3/ws/src/pickme_dev/pickme_dev/Camera/model3.pkl"
 
@@ -17,6 +27,12 @@ CLASSES = {
 TRAPEZ = np.array([[280, 285], [1485, 265], [1472, 620], [288, 690]])
 
 def get_features(image_path):
+    """
+    Berechnet die Merkmale (Hu-Momente hu_0 und hu_3) für ein einzelnes
+    Testbild, auf dieselbe Weise wie beim Training.
+ 
+    Gibt None zurück, wenn kein gültiges Objekt gefunden wurde.
+    """
     img = cv2.imread(image_path)
     if img is None:
         return None

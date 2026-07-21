@@ -53,7 +53,7 @@ ROS2 Portalrobot interfaces: **[README.md](/ws/src/ro45_portalrobot_interfaces/R
 | Abschlusspräsentation | 29.06.26 | Abgeschlossen | Fertiger Roboter wird vorgestellt, softwareentscheidungen begründet und dargelegt und Praktische demonstration wird durchgeführt. |
 
 # 2 Software Architektur
-![Software Architektur](</doku/software_arch/SoftwareArch.png>)
+![Software Architektur](</doku/software_arch/Softwarearchitektur_neu.png>)
 Die blauen ovale stellen die implementierten ROS2 knoten dar. Die pinken kästchen stellen die jeweiligen Topics dar. Die orangenen kästchen hierbei die jeweiligen logiken dar.
 
 # 3 Designentscheidungen
@@ -74,7 +74,8 @@ Da die logik in verschiedene knoten aufgeteilt wurden, mussten custom messages v
 Dies ist das Konzept welches zu beginn entwickelt wurde und auch mit relativ wenigen veränderungen umgesetzt wurde. Die Transformation von Kamerakoordinaten in Weltkoordinaten wurde, statt einer normalen Transformation, über 4 ArUco marker und Homographie gelöst.
 
 # 5 Lessons learned
+Im Laufe des Projekts hat sich gezeigt, dass Matlab-Simulink ein sehr starkes Werkzeug für den Entwurf von Regelungssystemen ist, da sich damit Reglerkonzepte schnell grafisch aufbauen und direkt simulieren lassen, bevor sie in echten Code überführt werden. Da der Zugriff auf die Hardware durch die begrenzte Verfügbarkeit eingeschränkt war, erwies es sich zudem als sehr hilfreich, Software extern und unabhängig von der Hardware zu testen, sodass die Entwicklung nicht ins Stocken geriet, sobald kein Zugriff auf den Roboter bestand. Ein klares Designkonzept zu Beginn hat die spätere Umsetzung erheblich erleichtert, da einzelne Komponenten dadurch gezielter entwickelt und getestet werden konnten. Ebenso hat eine klare Absprache im Team die Arbeit insgesamt erleichtert, da Zuständigkeiten und Schnittstellen zwischen den einzelnen Modulen von vornherein eindeutig geklärt waren.
 
 # 6 Auswertung des Gesamtsystems
 
-# 7 Dokumente und referenzen
+# 7 Dokumente und Referenzen
